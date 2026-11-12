@@ -46,9 +46,19 @@ class AudioGraph(context: Context) {
         requireNotNull(credentials.value) { "Connect to Navidrome first." },
         allowLocalHttp = BuildConfig.DEBUG,
     )
-    suspend fun setSession(value: ListeningSession) = lock.withLock {
+    suspend fun setSession(value: ListeningSession, expectedCredentials: Credentials? = null, expectedSession: ListeningSession? = null) = lock.withLock {
         require(value.connectionId == credentials.value?.connection?.id) { "The active connection changed. Choose the playlist again." }
-        val safe = SessionRules.restore(value)
+        if (expectedCredentials != null) {
+            require(currentCredentials.value == expectedCredentials && currentSession.value?.queueId == expectedSession?.queueId &&
+                currentSession.value?.queue?.map { it.id } == expectedSession?.queue?.map { it.id }) {
+                "The listening session changed. Choose the music again."
+            }
+        }
+        // A queue jump changes position only, not a rating/repeat update committed during resolution.
+        val current = currentSession.value
+        val merged = if (expectedCredentials != null && current != null && current.queueId == value.queueId)
+            current.copy(index = value.index, positionMs = value.positionMs) else value
+        val safe = SessionRules.restore(merged)
         store.saveSession(safe)
         currentSession.value = safe
     }

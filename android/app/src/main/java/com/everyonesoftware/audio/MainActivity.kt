@@ -1,6 +1,8 @@
 package com.everyonesoftware.audio
 
 import android.graphics.Color
+import android.content.Intent
+import android.app.SearchManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -24,5 +26,17 @@ class MainActivity : ComponentActivity() {
             val artwork = remember(state.connection) { { id: String? -> model.artworkUrl(id) } }
             AudioTheme { AudioApp(state, model, artwork) }
         }
+        if (savedInstanceState == null) handleVoiceIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleVoiceIntent(intent)
+    }
+
+    private fun handleVoiceIntent(intent: Intent) {
+        if (intent.action != "android.media.action.MEDIA_PLAY_FROM_SEARCH") return
+        model.playFromSearch(intent.getStringExtra(SearchManager.QUERY).orEmpty())
     }
 }

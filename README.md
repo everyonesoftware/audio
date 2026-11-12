@@ -10,7 +10,13 @@ Credentials start blank and are encrypted with an Android Keystore-backed key. R
 
 Build/setup, architecture, test commands, checkpoint semantics, and explicit alpha limitations are documented in [`android/README.md`](android/README.md). The debug APK builds to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-Verified on an isolated API 36 emulator: 21 JVM tests and 27 instrumentation tests, including real production-activity connection, decoded WAV streaming while backgrounded, rating readback, seeking, and activity return. Android lint passes with warnings; all browser mockup suites also pass. These are fixture checks, not a claim that real-server, Bluetooth, Android Auto, offline-download, or release-distribution testing is complete.
+Verified on an isolated API 36 emulator: 24 JVM tests and 41 instrumentation tests, including real production-activity connection, decoded WAV streaming while backgrounded, rating readback, seeking, activity return, and native media browsing/playback for the Android Auto integration. Android lint passes with warnings. These are fixture checks, not a claim that real-server, Bluetooth, Android Auto host, offline-download, or release-distribution testing is complete.
+
+### Android Auto — first native integration
+
+Audio now declares media support for Android Auto and serves Playlists and Queue through its existing Media3 service. Browsing a playlist leaves playback unchanged; a shuffle action starts it, and choosing a queue occurrence keeps the existing queue identity. The phone and car controllers use the same player and persisted session. Playlist-name voice requests are supported; connection setup and ratings stay on the phone.
+
+The integration is tested through real Media3 and legacy platform browsers on an isolated emulator, including streaming, stale-selection protection, subscription updates, and a two-process paused-restore probe. **No Android Auto host, Desktop Head Unit, physical car, or personal server has been tested.** Authenticated artwork in the car, a car-player shuffle toggle, and broader voice search are deferred. The car host determines the actual layout; the browser study below is not a screenshot of the implementation. See [`android/README.md`](android/README.md) for scope and verification.
 
 ## Automated APK releases
 
@@ -28,7 +34,7 @@ Open `mockups/android-auto-v1.html`, or `/auto.html` on the optional preview ser
 
 Now playing, recent playlists, and the queue share an in-memory demo session. Resume preserves the existing order and position; playlist names open an inspection view without replacing playback, while the shuffle action starts that playlist and returns to the player. Try transport controls, queue selection, phone-only song ratings, or the server-unavailable/retry preview. Reloading resets the demo. No audio, server requests, real phone synchronization, or persistence is implemented.
 
-The system dock and car layout are illustrative, not a claim of Android Auto integration or certification. The actual host controls its media presentation. Native Android sources are unchanged. The playback action order follows Google’s media playback design reference, linked inside the study.
+The system dock and car layout are illustrative, not a claim of Android Auto host validation or certification. The actual host controls its media presentation. This study remains preserved separately from the native integration described above. The playback action order follows Google’s media playback design reference, linked inside the study.
 
 Run `npm run test:auto` for paired-state interaction checks, pending/retry recovery, phone ratings, and all three screens in all three review modes at 1600px, 1024px, 390px, and 320px. Screenshots and the report are written to `test-results/audio-auto-*`.
 

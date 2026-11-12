@@ -16,6 +16,7 @@ import com.everyonesoftware.audio.data.Credentials
 import com.everyonesoftware.audio.data.NavidromeClient
 import com.everyonesoftware.audio.data.NavidromeException
 import com.everyonesoftware.audio.playback.PlaybackService
+import com.everyonesoftware.audio.playback.CarLibrary
 import com.everyonesoftware.audio.playback.SessionRules
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.UUID
@@ -34,6 +35,7 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     private val current = MutableStateFlow(AudioUiState())
     val state = current.asStateFlow()
     private var operation: Job? = null
+    private val initialization: Job
     private var generation = 0L
     private var firstLibrarySetup = false
     private val controllerFuture: ListenableFuture<MediaController>? = if (connectController) {
@@ -41,14 +43,15 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     } else null
 
     init {
-        viewModelScope.launch {
+        initialization = viewModelScope.launch {
             try {
                 graph.bootstrap()
                 restoreConnection()
                 val session = graph.session.value
                 current.update { it.copy(booting = false, session = session, positionMs = session?.positionMs ?: 0,
                     screen = when { session != null -> Screen.PLAYER; graph.credentials.value != null -> Screen.PLAYLISTS; else -> Screen.WELCOME }) }
-                if (current.value.screen == Screen.PLAYLISTS) loadPlaylists()
+                // Startup refresh must not cancel an explicit request received while restoring.
+                if (current.value.screen == Screen.PLAYLISTS && generation == 0L) loadPlaylists()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { current.update { it.copy(booting = false, error = safeMessage(error)) } }
         }
@@ -166,6 +169,18 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
             val session = SessionRules.start(connection.id, playlist.id, playlist.name, songs)
             val controller = controller()
             graph.setSession(session)
+            controller.play()
+            current.update { it.copy(screen = Screen.PLAYER, ratingError = null) }
+        }
+    }
+
+    fun playFromSearch(query: String) {
+        work {
+            initialization.join()
+            graph.bootstrap()
+            val selected = CarLibrary(graph).resolveSearch(query)
+            val controller = controller()
+            graph.setSession(selected.session, selected.credentials, selected.previous)
             controller.play()
             current.update { it.copy(screen = Screen.PLAYER, ratingError = null) }
         }
