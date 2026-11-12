@@ -1,0 +1,124 @@
+/* V5: improve readability without changing the calibrated device size. */
+.device { font-size: 18px; }
+.device .screen { padding: 14px 18px 18px; }
+.device .hint, .device .welcome-copy { font-size: 18px; line-height: 1.55; }
+.device .demo-note, .device .field-help, .device .disclosure p { font-size: 15px; line-height: 1.5; }
+.device .kicker { font-size: 14px; letter-spacing: 1px; }
+.device .context strong { font-size: 20px; line-height: 1.3; white-space: normal; }
+.device .app-top { gap: 9px; margin-bottom: 16px; min-height: 56px; }
+.device .picker-heading { font-size: 30px; line-height: 1.2; }
+.device .primary { font-size: 18px; min-height: 56px; padding: 10px 14px; line-height: 1.3; }
+.device .text-button { font-size: 16px; min-height: 52px; }
+.device .icon-button { min-width: 52px; width: 52px; height: 52px; }
+.device .icon-button > svg { width: 25px; height: 25px; }
+.device .form-field label { font-size: 18px; margin-bottom: 8px; }
+.device .field-input { font-size: 18px; min-height: 54px; }
+.device .form-field { margin-bottom: 17px; }
+.device .inline-error, .device .form-status { font-size: 16px; line-height: 1.5; }
+.device .welcome-title { font-size: 43px; }
+.device .welcome-mark { margin: 28px 0; }
+.device .benefit strong { font-size: 20px; }
+.device .benefit p { font-size: 17px; line-height: 1.5; }
+.device .connected-summary strong { font-size: 20px; }
+.device .connected-summary small { font-size: 16px; line-height: 1.5; }
+.device .library-choice { min-height: 86px; }
+.device .library-choice strong { font-size: 20px; }
+.device .library-choice small { font-size: 16px; line-height: 1.4; }
+.device .library-choice input { width: 26px; height: 26px; }
+.device .library-count { font-size: 16px; }
+.device .disclosure summary { font-size: 17px; min-height: 56px; }
+.device .summary-row { font-size: 17px; line-height: 1.5; }
+.device .badge { font-size: 12px; }
+.device .section-label { font-size: 15px; }
+.device .playlist-row { gap: 10px; min-height: 100px; padding-block: 12px; }
+.device .playlist-cover { width: 58px; height: 58px; }
+.device .playlist-copy strong { font-size: 20px; line-height: 1.25; }
+.device .playlist-copy small { font-size: 15px; line-height: 1.4; }
+.device .row-action span { font-size: 12px; }
+.device .playlist-row .quick-start { width: 56px; height: 56px; min-width: 56px; }
+.device .search { min-height: 56px; }
+.device .search input { font-size: 18px; height: 54px; }
+.device .connection-copy strong { font-size: 20px; }
+.device .connection-copy small { font-size: 16px; line-height: 1.5; }
+.device .connection-row { padding: 13px 11px; }
+.device .connection-row .text-button { font-size: 16px; }
+.device .settings-section h4 { font-size: 22px; }
+.device .settings-actions .primary { font-size: 17px; min-height: 54px; }
+.device .settings-bottom { flex-wrap: wrap; }
+.device .settings-bottom .text-button { font-size: 16px; }
+.device .song-row { min-height: 76px; }
+.device .song-row button { min-height: 64px; }
+.device .song-row strong { font-size: 19px; }
+.device .song-row small { font-size: 15px; }
+.device .song-row .number { font-size: 15px; }
+.device .song-row img { width: 46px; height: 46px; }
+.device .mini { min-height: 74px; }
+.device .mini strong { font-size: 18px; }
+.device .mini small { font-size: 14px; }
+.device .mini img { width: 52px; height: 52px; }
+.device .mini-open { min-height: 56px; }
+.device .empty-card, .device .empty-card p, .device .empty, .device .alert-box { font-size: 17px; line-height: 1.5; }
+
+/* Seven purposeful rows fill the player; artwork flexes, the footer stays low. */
+.device.player-mode .screen {
+  display: grid;
+  grid-template-rows: auto minmax(120px, 1fr) auto auto auto auto auto;
+  gap: 12px;
+  overflow: hidden;
+}
+.device .player-top { margin: 0; min-height: 52px; }
+.device .player-top .context strong { font-size: 20px; }
+.device .player-top .context small { display: none; }
+.player-visual { min-height: 0; display: flex; align-items: center; justify-content: center; }
+.device .player-visual .player-art { width: auto; height: 100%; max-width: 100%; aspect-ratio: 1; margin: 0; border-radius: 10px; object-fit: contain; }
+.device .player-song { margin: 0; min-height: 64px; align-items: center; gap: 14px; }
+.device .player-song > div { flex: 1; min-width: 0; }
+.device .player-song h3 { font-size: 32px; line-height: 1.15; margin-bottom: 8px; overflow-wrap: anywhere; }
+.device .player-song p { font-size: 20px; line-height: 1.3; }
+.device .rating-trigger { width: 60px; min-width: 60px; height: 64px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.rating-trigger svg { width: 27px; height: 27px; }
+.rating-trigger.rated svg { fill: currentColor; }
+.rating-trigger span { font-size: 16px; line-height: 1.2; }
+.player-seek .seek { width: 100%; height: 44px; margin: 0; }
+.device .player-seek .times { font-size: 16px; }
+.device .play-controls { margin: 0; min-height: 76px; }
+.device .play-controls .big { width: 82px; min-width: 82px; height: 76px; border-radius: 26px; }
+.device .play-controls .big svg { width: 34px; height: 34px; }
+.device .change-playlist { min-height: 66px; padding: 10px 13px; }
+.device .change-playlist strong { font-size: 20px; }
+.device .change-playlist small { font-size: 15px; margin-top: 4px; }
+.device .secondary-row { margin: 0; min-height: 48px; }
+.device .source-note { font-size: 13px; letter-spacing: .3px; }
+
+/* A real modal inside the phone, with large separate targets and a clear way out. */
+.rating-dialog { width: calc(100% - 32px); max-width: 370px; max-height: calc(100% - 40px); margin: auto; padding: 20px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 18px 60px #0008; overflow: auto; }
+.rating-dialog::backdrop { background: #080d0ab8; }
+.rating-dialog h3 { margin: 0 0 7px; font-size: 28px; line-height: 1.2; letter-spacing: -.5px; }
+.rating-song { font-size: 20px; font-weight: 600; margin: 0 0 6px; overflow-wrap: anywhere; }
+.rating-artist { font-size: 17px; line-height: 1.4; color: var(--sub); margin: 0 0 19px; }
+.rating-value { font-size: 16px; color: var(--sub); margin: 0 0 10px; }
+.rating-choices { display: flex; justify-content: space-between; gap: 5px; margin: 12px 0 16px; }
+.device .rating-choice { min-width: 56px; width: 56px; height: 80px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--sub); display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
+.rating-choice svg { width: 32px; height: 32px; }
+.rating-choice span { font-size: 18px; }
+.rating-choice.filled { color: var(--accent); }
+.rating-choice.filled svg { fill: currentColor; }
+.rating-choice[aria-checked=true] { border-color: var(--accent); }
+.rating-dialog .rating-status { font-size: 16px; min-height: 24px; line-height: 1.5; display: block; }
+.rating-dialog .rating-error-line { align-items: start; }
+.rating-dialog .rating-help { font-size: 15px; color: var(--sub); line-height: 1.5; margin: 14px 0; }
+.rating-dialog-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px; }
+.rating-dialog-actions .primary { min-width: 112px; }
+@media(max-width:360px) {
+  .device .screen { padding-inline: 14px; }
+  .device .player-song h3 { font-size: 29px; }
+  .device .play-controls .icon-button { width: 48px; min-width: 48px; }
+  .device .play-controls .big { width: 70px; min-width: 70px; }
+  .rating-dialog { padding: 16px; width: calc(100% - 24px); }
+  .rating-choices { gap: 0; }
+  .device .rating-choice { width: 48px; min-width: 48px; height: 76px; }
+  .device .playlist-copy strong { font-size: 18px; }
+  .device .playlist-cover { width: 48px; height: 48px; }
+  .device .playlist-info { gap: 8px; }
+  .device .row-action .quick-start { width: 52px; min-width: 52px; }
+}

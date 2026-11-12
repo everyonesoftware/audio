@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Audio" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#C0D7AE</item>
+        <item name="android:windowBackground">#1C211F</item>
+    </style>
+</resources>

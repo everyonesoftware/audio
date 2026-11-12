@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio — Android design studies</title>
+<style>
+:root{color-scheme:light;--board:#eeece6;--ink:#282b27;--muted:#686c63;--line:#d2d3c9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--board);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e58148;outline-offset:3px}
+button{ -webkit-tap-highlight-color:transparent }
+svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.board{padding:30px 42px 36px;max-width:1510px;margin:auto}
+.masthead{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:1px solid var(--line);gap:16px}
+.wordmark{font-size:23px;font-weight:650;letter-spacing:-1px;display:flex;align-items:center;gap:10px}
+.mark{display:flex;align-items:center;gap:3px;height:24px}.mark i{background:currentColor;width:3px;height:12px;border-radius:3px}.mark i:nth-child(2){height:24px}.mark i:nth-child(3){height:18px}.mark i:nth-child(4){height:8px}
+.eyebrow{font:11px 'Consolas',monospace;letter-spacing:1.6px;text-transform:uppercase}
+.intro{display:flex;justify-content:space-between;align-items:end;gap:24px;padding:26px 0 24px}
+h1{font-size:40px;letter-spacing:-1.8px;line-height:1.12;font-weight:500;margin:8px 0 10px}
+.intro p{font-size:14px;color:var(--muted);margin:0;max-width:590px;line-height:1.6}
+.study-note{max-width:260px;font-size:12px;color:var(--muted);line-height:1.7}
+.controls{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-block:1px solid var(--line);flex-wrap:wrap}
+.screen-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.screen-tabs button,.direction-select{background:transparent;border:1px solid transparent;border-radius:6px;color:var(--muted);min-height:44px;padding:0 13px;font-size:13px}
+.screen-tabs button[aria-pressed=true]{background:var(--ink);color:#f5f5ed}
+.direction-select{border-color:var(--line);color:var(--ink)}
+.studies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:38px;margin-top:24px;align-items:start}
+.study{min-width:0}.study.hidden{display:none}
+.studies.focus{grid-template-columns:minmax(0,380px);justify-content:center}
+.study-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
+.study-label h2{font-size:15px;font-weight:600;margin:0;letter-spacing:-.3px}.study-label h2 span{font:11px Consolas,monospace;color:var(--muted);margin-right:8px}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+.phone{height:740px;background:#121512;padding:7px;border-radius:36px;box-shadow:0 14px 28px #34382c14,0 1px 2px #34382c33;max-width:380px;margin:0 auto;position:relative}
+.device{height:100%;border-radius:29px;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column;position:relative;font-family:'Segoe UI',sans-serif;--bg:#17201c;--surface:#222e26;--raised:#2c3930;--text:#edf2e9;--sub:#a5b5a8;--accent:#c1dfa7;--onaccent:#24351f;--border:#354238;--radius:14px}
+.device.sleeve{--bg:#faf7f0;--surface:#f0eadf;--raised:#e8e1d5;--text:#302d26;--sub:#706b60;--accent:#ab4526;--onaccent:#fff8f0;--border:#e1dbcf;--radius:4px}
+.device.nightshift{--bg:#111619;--surface:#1d262c;--raised:#2a353c;--text:#e8eef1;--sub:#9aabb5;--accent:#a6d2e8;--onaccent:#173747;--border:#2b3942;--radius:8px}
+.status{height:31px;display:flex;align-items:center;justify-content:space-between;padding:6px 20px 0;font-size:11px;font-weight:600;flex-shrink:0}.status .status-right{display:flex;gap:5px;align-items:center}.status svg{width:13px;height:13px}.camera{position:absolute;left:calc(50% - 5px);top:12px;width:10px;height:10px;border-radius:50%;background:#050806}
+.app-content{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:16px 18px 18px}.app-content::-webkit-scrollbar{display:none}
+.app-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:19px}.app-header h3{font-size:27px;line-height:1.1;letter-spacing:-.9px;font-weight:650;margin:0}.sleeve .app-header h3{font:34px Georgia,serif;letter-spacing:-1.3px}.app-header .kicker{display:block;font-size:10px;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px}
+.icon-btn{width:44px;height:44px;min-width:44px;border:0;display:inline-flex;align-items:center;justify-content:center;color:var(--text);background:transparent;border-radius:50%}
+.icon-btn:hover{background:var(--raised)}
+.search{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:0 12px;margin-bottom:16px;min-height:44px;color:var(--sub)}.search svg{width:18px;height:18px}.search input{background:transparent;border:0;outline:none;width:100%;min-width:0;color:var(--text);font-size:12px;height:44px}.search input::placeholder{color:var(--sub)}
+.chips{display:flex;gap:6px;margin-bottom:23px;overflow-x:auto;scrollbar-width:none}.chips button{font-size:11px;border:1px solid var(--border);border-radius:22px;min-height:44px;padding:0 13px;color:var(--sub);background:transparent;white-space:nowrap}.chips button.active{background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:650}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 12px}.section-head h4{margin:0;font-size:16px;letter-spacing:-.3px;font-weight:600}.sleeve .section-head h4{font:22px Georgia,serif}.small-button{font-size:11px;color:var(--sub);border:0;background:transparent;min-height:44px;padding:0 3px}
+.album-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 13px}
+.album-card{min-width:0;display:block;color:var(--text);padding:0;background:none;border:0;text-align:left}.art{aspect-ratio:1;display:block;width:100%;object-fit:cover;border-radius:calc(var(--radius) * .5);background:var(--surface)}
+.album-title{display:block;font-size:12px;font-weight:600;line-height:1.4;margin-top:8px}.album-artist{display:block;color:var(--sub);font-size:11px;line-height:1.5;margin-top:2px}
+.announcement{display:flex;gap:10px;align-items:center;font-size:11px;color:var(--sub);margin:0 0 17px}.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.feature{position:relative;padding:0;border:0;background:var(--surface);color:white;text-align:left;display:block;width:100%;overflow:hidden;border-radius:var(--radius);margin-bottom:19px}.feature img{width:100%;height:228px;object-fit:cover;display:block}.feature .feature-caption{position:absolute;bottom:0;left:0;right:0;padding:42px 16px 14px;background:linear-gradient(transparent,#000c)}.feature .feature-caption b{display:block;font-size:25px;letter-spacing:-.7px}.feature-caption small{font-size:10px;letter-spacing:1px;text-transform:uppercase}.feature-play{position:absolute;right:12px;bottom:16px;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--onaccent);display:grid;place-items:center}
+.sleeve .feature img{height:228px}.sleeve .feature-caption b{font-family:Georgia,serif;font-weight:400;font-size:29px}.sleeve .feature{border-radius:2px}
+.album-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.album-strip .album-title{font-size:10px}.album-strip .album-artist{font-size:10px}
+.mini{margin:0 10px 5px;padding:6px;background:var(--raised);display:flex;align-items:center;gap:8px;border-radius:var(--radius);min-height:61px;position:relative;flex-shrink:0}.mini:after{content:'';position:absolute;left:10px;right:65%;bottom:0;height:2px;background:var(--accent)}.mini img{width:44px;height:44px;border-radius:4px}.mini-open{display:flex;gap:9px;align-items:center;flex:1;min-width:0;background:none;border:0;color:var(--text);text-align:left;padding:0}.mini-copy{min-width:0}.mini-copy b{display:block;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mini-copy small{display:block;font-size:10px;color:var(--sub);margin-top:4px}.mini .icon-btn{color:var(--accent)}
+.bottom-nav{display:flex;justify-content:space-around;padding:4px 8px 2px;border-top:1px solid var(--border);flex-shrink:0}.bottom-nav button{border:0;background:transparent;min-height:55px;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;color:var(--sub)}.bottom-nav button.active{color:var(--accent)}.bottom-nav .nav-icon{height:26px;min-width:49px;display:flex;justify-content:center;align-items:center;border-radius:20px}.bottom-nav button.active .nav-icon{background:var(--raised)}.bottom-nav svg{width:20px;height:20px}
+.gesture{height:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.gesture:after{content:'';width:92px;height:4px;background:var(--text);opacity:.65;border-radius:4px}
+.study-caption{font-size:12px;color:var(--muted);line-height:1.6;max-width:365px;margin:17px auto 0}.study-caption b{font-weight:600;color:var(--ink)}
+.back-row{display:flex;align-items:center;justify-content:space-between;margin:-7px -8px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--sub)}
+.album-detail-art{width:70%;margin:0 auto 19px;box-shadow:0 9px 18px #0002}.detail-title{font-size:25px;letter-spacing:-.7px;margin:0 0 5px}.sleeve .detail-title{font:29px Georgia,serif}.detail-sub{font-size:12px;color:var(--sub);margin:0 0 6px}.metadata{font-size:10px;color:var(--sub);margin:0 0 18px}
+.actions{display:flex;gap:8px;margin-bottom:17px;align-items:center}.primary{min-height:44px;border:0;border-radius:24px;background:var(--accent);color:var(--onaccent);font-size:12px;font-weight:650;padding:0 22px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.actions .primary{flex:1}.outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.track{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);min-height:56px}.track-main{flex:1;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;text-align:left;color:var(--text);min-height:44px;min-width:0}.track-index{color:var(--sub);width:16px;font-size:11px;text-align:center}.track img{width:42px;height:42px;border-radius:4px}.track-copy{flex:1;min-width:0}.track-copy b{display:block;font-size:12px;line-height:1.5;font-weight:500}.track-copy small{display:block;font-size:10px;color:var(--sub);margin-top:2px}.duration{font-size:10px;color:var(--sub)}.track.current .track-copy b,.track.current .track-index{color:var(--accent)}
+.player-art{width:100%;margin:22px 0 27px;box-shadow:0 14px 25px #0002}.player-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.player-title{font-size:27px;line-height:1.15;letter-spacing:-.7px;margin:0 0 7px}.sleeve .player-title{font:32px Georgia,serif}.player-artist{font-size:13px;color:var(--sub);margin:0}.liked{color:var(--accent)}
+.seek{width:100%;accent-color:var(--accent);margin:20px 0 0;height:22px;cursor:pointer}.time-row{display:flex;justify-content:space-between;color:var(--sub);font-size:10px}.playback{display:flex;justify-content:space-between;align-items:center;margin:20px 0 22px}.playback .big-play{width:70px;height:70px;min-width:70px;background:var(--accent);color:var(--onaccent);border-radius:24px}.playback .big-play svg{width:30px;height:30px}.sleeve .playback .big-play{border-radius:50%}.playback .icon-btn{color:var(--sub)}.playback .icon-btn.enabled{color:var(--accent)}
+.player-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px}.quality{font-size:9px;letter-spacing:1px;color:var(--sub)}.queue-btn{color:var(--text);border:0;background:none;display:flex;align-items:center;gap:6px;font-size:11px;min-height:44px}.queue-btn svg{width:18px}
+.download-summary{background:var(--surface);padding:17px;border-radius:var(--radius);margin-bottom:18px}.download-summary h4{font-size:17px;margin:0 0 6px}.download-summary p{font-size:11px;line-height:1.7;color:var(--sub);margin:0 0 12px}.download-summary .primary{padding:0 16px}.download-state{font-size:10px;color:var(--accent)}
+.empty{padding:35px 10px;text-align:center;color:var(--sub);font-size:12px;line-height:1.8}
+.server-intro{font-size:12px;line-height:1.7;color:var(--sub);margin:0 0 22px}.form-label{display:block;font-size:11px;margin-bottom:8px}.form-input{display:block;width:100%;min-height:48px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;color:var(--text);font-size:12px;margin-bottom:17px}.server-form .primary{width:100%;margin:5px 0 12px}.form-result{font-size:11px;line-height:1.6;margin:4px 0 18px;color:var(--accent)}.form-result.error{color:#cf705a}.preview-label{font-size:10px;line-height:1.7;color:var(--sub);border-top:1px solid var(--border);padding-top:16px}.preview-label strong{display:block;color:var(--text);font-weight:500}
+.toast{position:absolute;bottom:93px;left:16px;right:16px;background:var(--text);color:var(--bg);padding:12px 15px;font-size:11px;border-radius:8px;box-shadow:0 3px 15px #0003;z-index:10;pointer-events:none}.player-mode .toast{bottom:25px}
+.board-footer{display:flex;justify-content:space-between;gap:20px;margin-top:30px;padding-top:17px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.7}
+@media(min-width:1500px){.studies{gap:65px}}
+@media(max-width:1080px){.board{padding:24px}.studies{gap:18px}.phone{height:710px}.app-content{padding:14px}.feature img,.sleeve .feature img{height:205px}.player-art{margin:16px 0 22px}.study-label{align-items:start;flex-direction:column;gap:5px}.tag{min-height:12px}}
+@media(max-width:800px){.board{padding:20px}.intro{align-items:start}.study-note{display:none}h1{font-size:34px}.studies{grid-template-columns:minmax(0,380px);justify-content:center;gap:32px}.phone{height:740px}.app-content{padding:16px 18px 18px}.study-label{flex-direction:row;align-items:center}.feature img,.sleeve .feature img{height:228px}.player-art{margin:22px 0 27px}.masthead .eyebrow{font-size:9px;letter-spacing:1px}.board-footer{flex-direction:column;gap:8px}.controls{gap:8px}.screen-tabs{gap:0}.screen-tabs button{padding:0 9px;font-size:12px}.direction-select{width:100%}}
+.device.sleeve .feature img{height:180px}.sleeve .announcement{display:none}.sleeve .feature{margin-bottom:10px}.sleeve .section-head{margin-top:12px}
+.player-mode .player-art{width:90%;margin:12px auto 20px}.player-mode .playback{margin:16px 0 12px}.playback .icon-btn.big-play{color:var(--onaccent)}
+@media(max-width:360px){.board{padding:16px 12px}.app-content{padding:14px}.masthead .eyebrow{font-size:8px}.intro h1{font-size:31px}.bottom-nav{padding-inline:4px}.bottom-nav button{min-width:60px}}
+@media(prefers-reduced-motion:no-preference){.icon-btn,.primary,.album-card{transition:background .15s,opacity .15s}.album-card:hover{opacity:.82}}
+</style>
+</head>
+<body>
+<main class="board">
+<header class="masthead"><div class="wordmark"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>audio</div><span class="eyebrow">Android / Design studies 001</span></header>
+<section class="intro"><div><div class="eyebrow">Your collection. Your server.</div><h1>A little closer to the music.</h1><p>Three directions for a personal Android player. Built around your albums,<br class="desktop-break"> a persistent mini-player, and listening away from home.</p></div><div class="study-note">Designed for a Navidrome connection.<br>These are interactive visual prototypes, not a working music client.</div></section>
+<div class="controls"><nav class="screen-tabs" aria-label="Preview screen"></nav><select class="direction-select" aria-label="Design direction"><option value="all">Compare all three directions</option><option value="evergreen">A — Evergreen</option><option value="sleeve">B — Sleeve · recommended</option><option value="nightshift">C — Nightshift</option></select></div>
+<section class="studies" aria-label="Android player design comparisons"></section>
+<footer class="board-footer"><span>INTERACTIVE STUDY · Tap an album, the mini-player, or the navigation.<br>Music, artwork, storage, and server states are illustrative. No audio or network connection.</span><span>Next decision: choose a visual direction.<br>Native Android implementation comes after the design.</span></footer>
+</main>
+<script>
+'use strict';
+const icons = {
+ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+ library:'<path d="M4 5v15M9 5v15M14 4l6 15M3 3h7"/>',
+ home:'<path d="m3 10 9-7 9 7v10H4V10M9 20v-7h6v7"/>',
+ download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+ settings:'<path d="m9 3-1 3-3 1-2 4 2 3v4l4 2 3-1 3 1 4-2v-4l2-3-2-4-3-1-1-3z"/><circle cx="12" cy="12" r="3"/>',
+ play:'<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+ pause:'<path d="M8 5v14M16 5v14" stroke-width="4"/>',
+ next:'<path d="m5 5 10 7-10 7Z" fill="currentColor" stroke="none"/><path d="M19 5v14"/>',
+ previous:'<path d="m19 5-10 7 10 7Z" fill="currentColor" stroke="none"/><path d="M5 5v14"/>',
+ heart:'<path d="M20 5c-3-3-7 0-8 2-1-2-5-5-8-2-4 4 1 9 8 15 7-6 12-11 8-15Z"/>',
+ back:'<path d="m14 5-7 7 7 7"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ shuffle:'<path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 3-2 4-4m4-4c1-2 2-4 4-4h3m-4-4 4 4-4 4"/>',
+ repeat:'<path d="M4 10V7h15m-3-3 3 3-3 3M20 14v3H5m3 3-3-3 3-3"/>',
+ queue:'<path d="M3 5h17M3 10h17M3 15h10m4-1 4 3-4 3Z"/>',
+ check:'<path d="m5 12 4 4L20 5"/>',
+ wifi:'<path d="M3 8c5-4 13-4 18 0M6 12c4-3 8-3 12 0m-9 4c2-2 4-2 6 0"/><circle cx="12" cy="20" r=".7"/>',
+ battery:'<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M6 10h9v4H6Z" fill="currentColor"/>',
+ signal:'<path d="M5 19v-3m5 3v-7m5 7V8m5 11V4"/>'
+};
+const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.library}</svg>`;
+const esc = (str) => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const albums = [
+ {title:'The Quiet Earth',artist:'Alder & Ash',year:'2025',color:'#344b37',accent:'#d5dfb5',design:'earth',tracks:['A clearing','Slow light','The quiet earth','Everything returns','Between the pines','Stay a little longer']},
+ {title:'Blue Hours',artist:'June Marlow',year:'2024',color:'#273f58',accent:'#f5a388',design:'blue',tracks:['Last train home','Blue hours','Room with a view','Almost morning','A little further','Paper moon']},
+ {title:'Soft Focus',artist:'Low Season',year:'2025',color:'#a74c32',accent:'#f0ca93',design:'soft',tracks:['An open window','Soft focus','In the middle','Falling into place','Warm water','Half asleep']},
+ {title:'Tidal Memory',artist:'Coastline',year:'2023',color:'#4f7673',accent:'#dbdac1',design:'tide',tracks:['Salt air','Tidal memory','Offshore','Weightless','Still here','The way back']},
+ {title:'Small Worlds',artist:'The Satellites',year:'2024',color:'#917937',accent:'#f7e6ad',design:'worlds',tracks:['Near enough','Small worlds','Here and there','Orbit','Sunday people','Home again']},
+ {title:'After the Rain',artist:'Mira Sol',year:'2025',color:'#676b60',accent:'#f3d8bb',design:'rain',tracks:['First light','After the rain','Two rivers','Passing through','A softer place','The garden']}
+];
+function cover(album){
+ let graphic='';
+ if(album.design==='earth') graphic='<path d="M-30 325 140 85 310 325Z" fill="#152b22"/><path d="m130 325 156-190 143 190Z" fill="#60745c"/><circle cx="300" cy="77" r="32" fill="#d9deb0"/><path d="M0 299q190-60 400-5v106H0Z" fill="#aab39c"/>';
+ if(album.design==='blue') graphic='<path d="M65 0h270v400H65Z" fill="#7595a4"/><path d="M85 0h230v400H85Z" fill="#142a43"/><circle cx="200" cy="165" r="91" fill="#eea98f"/><path d="M85 196h230v204H85Z" fill="#243e56"/><path d="M85 220h230m-230 20h230m-230 25h230m-230 30h230" stroke="#708fa3" stroke-width="2"/>';
+ if(album.design==='soft') graphic='<circle cx="200" cy="200" r="140" fill="#e8b385"/><circle cx="200" cy="200" r="100" fill="#bd6549"/><circle cx="200" cy="200" r="63" fill="#f4ce9f"/><circle cx="200" cy="200" r="26" fill="#9c4734"/>';
+ if(album.design==='tide') graphic='<path d="M0 130q100-75 200 0t200 0v270H0Z" fill="#c5cbb6"/><path d="M0 180q100-75 200 0t200 0v220H0Z" fill="#74928a"/><path d="M0 230q100-75 200 0t200 0v170H0Z" fill="#294c4a"/><path d="M0 280q100-75 200 0t200 0v120H0Z" fill="#9eb5a6"/>';
+ if(album.design==='worlds') graphic='<circle cx="200" cy="200" r="130" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="85" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="30" fill="#f7e6ad"/><circle cx="290" cy="108" r="17" fill="#332f25"/><circle cx="126" cy="238" r="11" fill="#f7e6ad"/>';
+ if(album.design==='rain') graphic='<path d="M80 300V90m55 210V60m55 240V30m55 270V80m55 220V120" stroke="#adb6a1" stroke-width="15"/><circle cx="280" cy="100" r="48" fill="#efccad"/><path d="M0 300q200-70 400 0v100H0Z" fill="#3a4b40"/>';
+ const text=album.design==='soft'?'SOFT / FOCUS':album.title.toUpperCase();
+ const xml=`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="${album.color}"/>${graphic}<text x="22" y="33" font-family="Arial,sans-serif" font-size="11" letter-spacing="3" fill="${album.accent}">${album.artist.toUpperCase().replace('&','&amp;')}</text><rect y="333" width="400" height="67" fill="${album.color}"/><text x="22" y="373" font-family="Georgia,serif" font-size="27" fill="${album.accent}">${text}</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);
+}
+albums.forEach(a=>a.art=cover(a));
+const directions=[
+ {id:'evergreen',name:'Evergreen',tag:'A familiar foundation',description:'<b>Familiar & practical.</b> Material-inspired navigation, a scan-friendly album grid, and soft green controls. The lowest-friction everyday player.'},
+ {id:'sleeve',name:'Sleeve',tag:'Recommended direction',description:'<b>The collection comes first.</b> Warm paper, expressive type, and a featured record. A little more record shop; a little less dashboard.'},
+ {id:'nightshift',name:'Nightshift',tag:'For the late-night listener',description:'<b>Start with what’s playing.</b> Cool charcoal, a prominent current record, and a compact queue. Fewer decisions between you and the next track.'}
+];
+const screens=['Library','Album','Player','Queue','Offline','Server'];
+const state=Object.fromEntries(directions.map(d=>[d.id,{screen:'library',album:0,track:1,playing:true,liked:false,category:'Albums',query:'',offline:true,downloaded:false,shuffle:false,repeat:false,seek:31,server:'idle'}]));
+function iconButton(name,label,action,extra=''){return `<button class="icon-btn ${extra}" data-action="${action}" aria-label="${esc(label)}" title="${esc(label)}">${svg(name)}</button>`}
+function albumCard(a,i){return `<button class="album-card" data-album="${i}" aria-label="Open ${esc(a.title)} by ${esc(a.artist)}"><img class="art" src="${a.art}" alt="${esc(a.title)} — illustrative album artwork"><span class="album-title">${esc(a.title)}</span><span class="album-artist">${esc(a.artist)}</span></button>`}
+function header(title,sub='',action='settings'){return `<header class="app-header"><div>${sub?`<span class="kicker">${sub}</span>`:''}<h3>${title}</h3></div>${iconButton(action,action==='settings'?'Server settings':'Search library',action)}</header>`}
+function trackRow(s,i,withArt=false){const a=albums[s.album];return `<div class="track ${i===s.track?'current':''}"><button class="track-main" data-track="${i}" aria-label="Play ${esc(a.tracks[i])}">${withArt?`<img src="${a.art}" alt="">`:`<span class="track-index">${i===s.track&&s.playing?svg('signal'):i+1}</span>`}<span class="track-copy"><b>${esc(a.tracks[i])}</b><small>${esc(a.artist)}</small></span><span class="duration">${['3:42','4:18','3:56','5:02','4:06','3:31'][i]}</span></button></div>`}
+function feature(s,label){const a=albums[s.album];return `<button class="feature" data-action="player" aria-label="Open now playing"><img src="${a.art}" alt="${esc(a.title)} artwork"><span class="feature-caption"><small>${label}</small><b>${esc(a.title)}</b><span style="font-size:11px">${esc(a.artist)}</span></span><span class="feature-play">${svg(s.playing?'pause':'play')}</span></button>`}
+function library(s,id){
+ let out=header(id==='sleeve'?'Your collection':id==='nightshift'?'Good evening.':'Library',id==='sleeve'?'Audio / at home':id==='nightshift'?'Audio / tonight':'',id==='nightshift'?'settings':'settings');
+ out+=`<label class="search">${svg('search')}<input type="search" placeholder="Search your music" aria-label="Search your music" value="${esc(s.query)}"></label>`;
+ out+=`<div class="chips" aria-label="Library category">${['Albums','Artists','Songs','Playlists'].map(c=>`<button data-category="${c}" class="${s.category===c?'active':''}" aria-pressed="${s.category===c}">${c}</button>`).join('')}</div><div class="library-results">${results(s,id)}</div>`;
+ return out;
+}
+function results(s,id){
+ const found=albums.map((a,i)=>({a,i})).filter(({a})=>(a.title+' '+a.artist+' '+a.tracks.join(' ')).toLowerCase().includes(s.query.toLowerCase()));
+ if(!found.length)return '<div class="empty">No music found.<br>Try another album, artist, or song.</div>';
+ if(s.category==='Artists')return found.map(({a,i})=>`<div class="track"><button class="track-main" data-album="${i}"><img src="${a.art}" alt=""><span class="track-copy"><b>${esc(a.artist)}</b><small>1 album in your library</small></span>${svg('next')}</button></div>`).join('');
+ if(s.category==='Songs')return found.flatMap(({a,i})=>a.tracks.map((t,j)=>`<div class="track"><button class="track-main" data-song-album="${i}" data-song-track="${j}"><img src="${a.art}" alt=""><span class="track-copy"><b>${esc(t)}</b><small>${esc(a.artist)}</small></span>${svg('play')}</button></div>`)).join('');
+ if(s.category==='Playlists')return `<div class="section-head"><h4>Made by you</h4></div><button class="feature" data-action="playlist"><img src="${albums[3].art}" alt="Tidal Memory artwork used for sample playlist"><span class="feature-caption"><small>Sample playlist / 6 songs</small><b>The long way home</b></span></button>`;
+ if(s.query)return `<div class="album-grid">${found.map(({a,i})=>albumCard(a,i)).join('')}</div>`;
+ if(id==='evergreen')return `<div class="section-head" style="margin-top:0"><h4>Recently added</h4><button class="small-button" data-action="sort">Sort A–Z</button></div><div class="album-grid">${found.map(({a,i})=>albumCard(a,i)).join('')}</div>`;
+ if(id==='sleeve')return `<div class="announcement"><span class="dot"></span>Your server. Your own rotation.</div>${feature(s,'On the turntable')}<div class="section-head"><h4>On your shelves</h4><button class="small-button" data-action="all">View all</button></div><div class="album-strip">${found.slice(1,4).map(({a,i})=>albumCard(a,i)).join('')}</div>`;
+ return `${feature(s,'Pick up where you left off')}<div class="section-head"><h4>Up next</h4><button class="small-button" data-action="queue">Full queue</button></div>${[2,3,4].map(i=>trackRow(s,i)).join('')}<div class="section-head"><h4>Another mood</h4></div><div class="album-strip">${found.slice(1,4).map(({a,i})=>albumCard(a,i)).join('')}</div>`;
+}
+function albumScreen(s){const a=albums[s.album];return `<div class="back-row">${iconButton('back','Back to library','library')}<span>Album</span>${iconButton(s.downloaded?'check':'download',s.downloaded?'Remove sample download':'Download album','download-album')}</div><img class="art album-detail-art" src="${a.art}" alt="${esc(a.title)} artwork"><h3 class="detail-title">${esc(a.title)}</h3><p class="detail-sub">${esc(a.artist)}</p><p class="metadata">${a.year} · 6 songs · FLAC · Sample album</p><div class="actions"><button class="primary" data-action="play-album">${svg('play')}Play album</button>${iconButton('shuffle','Shuffle album','shuffle-album')}</div>${a.tracks.map((_,i)=>trackRow(s,i)).join('')}`}
+function player(s){const a=albums[s.album];return `<div class="back-row">${iconButton('down','Close player','library')}<span>Playing from your library</span>${iconButton('library','Open album','album')}</div><img class="art player-art" src="${a.art}" alt="${esc(a.title)} artwork"><div class="player-title-row"><div><h3 class="player-title">${esc(a.tracks[s.track])}</h3><p class="player-artist">${esc(a.artist)}</p></div><button class="icon-btn ${s.liked?'liked':''}" data-action="like" aria-label="${s.liked?'Remove from':'Add to'} favorites" aria-pressed="${s.liked}">${svg('heart')}</button></div><input class="seek" type="range" min="0" max="100" value="${s.seek}" aria-label="Playback position"><div class="time-row"><span class="elapsed">${formatTime(s.seek)}</span><span>4:18</span></div><div class="playback">${iconButton('shuffle','Toggle shuffle','shuffle',s.shuffle?'enabled':'')}${iconButton('previous','Previous track','previous')}<button class="icon-btn big-play" data-action="toggle-play" aria-label="${s.playing?'Pause':'Play'}">${svg(s.playing?'pause':'play')}</button>${iconButton('next','Next track','next')}${iconButton('repeat','Toggle repeat','repeat',s.repeat?'enabled':'')}</div><div class="player-footer"><span class="quality">FLAC · ORIGINAL QUALITY</span><button class="queue-btn" data-action="queue">${svg('queue')}Up next</button></div>`}
+function formatTime(p){const seconds=Math.round(258*p/100);return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`}
+function queue(s){return `<div class="back-row">${iconButton('back','Back to player','player')}<span>Playing next</span>${iconButton('shuffle','Shuffle queue','shuffle')}</div><h3 class="detail-title">A little more listening.</h3><p class="metadata">From ${esc(albums[s.album].title)} · Sample queue</p>${albums[s.album].tracks.map((_,i)=>trackRow(s,i,true)).join('')}`}
+function offline(s){return header('Offline','Take the good stuff')+`<div class="download-summary"><h4>${s.offline?'Ready when you aren’t online.':'Downloads paused.'}</h4><p>Keep favorite records on your phone.<br>1 album · 184 MB · Illustrative storage</p><button class="primary outline" data-action="toggle-downloads">${s.offline?'Pause downloads':'Resume downloads'}</button></div><div class="section-head"><h4>On this device</h4><span class="download-state">${s.offline?'Available offline':'Paused'}</span></div><div class="album-grid">${albumCard(albums[0],0)}</div><p class="preview-label">Sample download state. No files have been stored on your device.</p>`}
+function server(s){return header('Your server')+`<p class="server-intro">Bring your own library. This screen previews connecting to a Navidrome server.</p><form class="server-form"><label class="form-label" for="server-${s.id}">Server address</label><input class="form-input" id="server-${s.id}" type="url" value="https://music.example.com" name="url" required placeholder="https://music.example.com"><label class="form-label" for="user-${s.id}">Username</label><input class="form-input" id="user-${s.id}" name="username" value="demo-listener" required autocomplete="off"><label class="form-label" for="result-${s.id}">Preview outcome</label><select class="form-input" id="result-${s.id}" name="outcome"><option value="success">Connection succeeds</option><option value="error">Server is unreachable</option></select><button class="primary" type="submit">Preview connection</button><div class="form-result" role="status"></div></form><div class="preview-label"><strong>Design preview only — use dummy values.</strong>No password is requested. Nothing is sent or saved. Connection, authentication, and compatibility are not implemented.</div>`}
+function mini(s){const a=albums[s.album];return `<div class="mini"><button class="mini-open" data-action="player" aria-label="Open now playing"><img src="${a.art}" alt=""><span class="mini-copy"><b>${esc(a.tracks[s.track])}</b><small>${esc(a.artist)}</small></span></button>${iconButton(s.playing?'pause':'play',s.playing?'Pause':'Play','toggle-play')}</div>`}
+function navigation(s){return `<nav class="bottom-nav" aria-label="Music navigation">${[['library','library','Library'],['queue','queue','Queue'],['offline','download','Offline'],['server','settings','Server']].map(([page,icon,label])=>`<button data-action="${page}" class="${s.screen===page?'active':''}" ${s.screen===page?'aria-current="page"':''}><span class="nav-icon">${svg(icon)}</span>${label}</button>`).join('')}</nav>`}
+function render(id){const s=state[id];s.id=id;const device=document.querySelector(`.device.${id}`);device.classList.toggle('player-mode',s.screen==='player');device.innerHTML=`<div class="camera" aria-hidden="true"></div><div class="status"><span>9:41</span><span class="status-right">${svg('signal')}${svg('wifi')}${svg('battery')}</span></div><div class="app-content">${({library:()=>library(s,id),album:()=>albumScreen(s),player:()=>player(s),queue:()=>queue(s),offline:()=>offline(s),server:()=>server(s)})[s.screen]()}</div>${s.screen==='player'?'':mini(s)+navigation(s)}<div class="gesture" aria-hidden="true"></div>`}
+function toast(id,text){const d=document.querySelector('.device.'+id);d.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=text;d.append(t);setTimeout(()=>t.remove(),2300)}
+const studies=document.querySelector('.studies');studies.innerHTML=directions.map(d=>`<article class="study" data-direction="${d.id}"><div class="study-label"><h2><span>${d.id==='evergreen'?'01':d.id==='sleeve'?'02':'03'}</span>${d.name}</h2><span class="tag">${d.tag}</span></div><div class="phone"><section class="device ${d.id}" aria-label="${d.name} Android prototype"></section></div><p class="study-caption">${d.description}</p></article>`).join('');
+directions.forEach(d=>render(d.id));
+const tabs=document.querySelector('.screen-tabs');tabs.innerHTML=screens.map(n=>`<button data-screen="${n.toLowerCase()}" aria-pressed="${n==='Library'}">${n}</button>`).join('');
+function selectScreen(screen){if(!screens.some(n=>n.toLowerCase()===screen))screen='library';directions.forEach(d=>{state[d.id].screen=screen;render(d.id)});tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.screen===screen))}
+function applyHash(){const [direction,screen]=location.hash.slice(1).split('/');const selected=directions.some(d=>d.id===direction)?direction:'all';document.querySelector('.direction-select').value=selected;studies.classList.toggle('focus',selected!=='all');document.querySelectorAll('.study').forEach(study=>study.classList.toggle('hidden',selected!=='all'&&study.dataset.direction!==selected));selectScreen(screen||'library')}
+tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-screen]');if(b)location.hash=document.querySelector('.direction-select').value+'/'+b.dataset.screen});
+document.querySelector('.direction-select').addEventListener('change',e=>{location.hash=e.target.value+'/'+(tabs.querySelector('[aria-pressed=true]')?.dataset.screen||'library')});
+window.addEventListener('hashchange',applyHash);applyHash();
+studies.addEventListener('input',e=>{const d=e.target.closest('.device');if(!d)return;const id=d.classList[1],s=state[id];if(e.target.matches('input[type=search]')){s.query=e.target.value;d.querySelector('.library-results').innerHTML=results(s,id)}if(e.target.matches('.seek')){s.seek=Number(e.target.value);d.querySelector('.elapsed').textContent=formatTime(s.seek)}});
+studies.addEventListener('click',e=>{
+ const device=e.target.closest('.device');if(!device)return;const id=device.classList[1],s=state[id];const button=e.target.closest('button');if(!button)return;
+ if(button.dataset.album!==undefined){s.album=Number(button.dataset.album);s.screen='album';render(id);return}
+ if(button.dataset.category){s.category=button.dataset.category;render(id);return}
+ if(button.dataset.track!==undefined){s.track=Number(button.dataset.track);s.playing=true;render(id);return}
+ if(button.dataset.songAlbum!==undefined){s.album=Number(button.dataset.songAlbum);s.track=Number(button.dataset.songTrack);s.playing=true;s.screen='player';render(id);return}
+ const a=button.dataset.action;
+ if(['library','album','player','queue','offline','server'].includes(a))s.screen=a;
+ else if(a==='settings')s.screen='server';
+ else if(a==='toggle-play')s.playing=!s.playing;
+ else if(a==='like')s.liked=!s.liked;
+ else if(a==='next'){s.track=(s.track+1)%6;s.seek=0}
+ else if(a==='previous'){s.track=(s.track+5)%6;s.seek=0}
+ else if(a==='shuffle'||a==='repeat')s[a]=!s[a];
+ else if(a==='shuffle-album'){s.track=3;s.shuffle=true;s.screen='player';s.playing=true}
+ else if(a==='play-album'){s.track=0;s.screen='player';s.playing=true}
+ else if(a==='toggle-downloads')s.offline=!s.offline;
+ else if(a==='download-album'){s.downloaded=!s.downloaded;render(id);toast(id,s.downloaded?'Album downloaded · simulated':'Sample download removed');return}
+ else if(a==='sort'){s.query='';s.category='Albums';device.querySelector('.library-results').innerHTML=`<div class="section-head"><h4>Albums · A–Z</h4></div><div class="album-grid">${albums.map((a,i)=>({a,i})).sort((x,y)=>x.a.title.localeCompare(y.a.title)).map(({a,i})=>albumCard(a,i)).join('')}</div>`;return}
+ else if(a==='all'){s.query='';device.querySelector('.library-results').innerHTML=`<div class="album-grid">${albums.map(albumCard).join('')}</div>`;return}
+ else if(a==='playlist'){s.album=3;s.screen='queue'}
+ else return;
+ render(id);
+});
+studies.addEventListener('submit',e=>{if(!e.target.matches('.server-form'))return;e.preventDefault();const f=e.target;const result=f.querySelector('.form-result');const button=f.querySelector('button[type=submit]');result.classList.remove('error');button.disabled=true;button.textContent='Previewing…';result.textContent='Simulating a connection. No request is sent.';setTimeout(()=>{if(!f.isConnected)return;button.disabled=false;button.textContent='Preview connection';if(f.elements.outcome.value==='error'){result.classList.add('error');result.textContent='Simulated failure: server unreachable. Check the address and try again.'}else{result.textContent='Simulated success. Your library would appear here after authentication.'}},450)});
+</script>
+</body>
+</html>

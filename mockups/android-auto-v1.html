@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audio · Android Auto study</title>
+<style>
+:root { color-scheme:light; font-family:'Segoe UI',Arial,sans-serif; color:#252e29; background:#eeeFE9; --sage:#c0d7ae; --ink:#edf0e9; --muted:#aab4a9; --base:#1c211f; --panel:#262e29; --line:#3a443d; }
+* { box-sizing:border-box; }
+body { margin:0; }
+button,select { font:inherit; }
+button { cursor:pointer; }
+button:focus-visible,select:focus-visible { outline:3px solid #88acfa; outline-offset:4px; }
+button:disabled { cursor:wait; opacity:.55; }
+button svg { pointer-events:none; }
+svg.icon { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+.board { max-width:1600px; padding:32px 40px 28px; margin:auto; }
+.masthead { display:flex; align-items:center; justify-content:space-between; padding-bottom:24px; border-bottom:1px solid #ccd1c7; gap:16px; }
+.brand { display:flex; align-items:center; gap:12px; font-size:22px; font-weight:650; letter-spacing:-.6px; }
+.brand-mark { background:#293c30; color:var(--sage); width:38px; height:38px; border-radius:12px; display:grid; place-items:center; }
+.edition { font-size:12px; text-transform:uppercase; letter-spacing:1.8px; color:#687367; }
+.intro { display:flex; justify-content:space-between; align-items:end; gap:24px; padding:28px 0 24px; }
+h1 { margin:0 0 8px; font-size:32px; font-weight:550; letter-spacing:-1.1px; }
+.intro p { margin:0; font-size:15px; color:#5f6b60; }
+.segment { display:flex; flex-wrap:wrap; gap:4px; background:#dfe4da; border-radius:30px; padding:5px; }
+.segment button { border:0; border-radius:24px; padding:10px 16px; background:transparent; color:#4b584d; font-size:13px; white-space:nowrap; }
+.segment button[aria-pressed=true] { background:#293b30; color:#f2f4ee; }
+.toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-bottom:24px; }
+.toolbar label { display:flex; align-items:center; gap:8px; font-size:13px; }
+select { border:1px solid #bdc7b9; border-radius:8px; background:#f5f6f1; padding:8px 28px 8px 10px; color:#324235; }
+.reset { margin-left:auto; background:none; border:0; text-decoration:underline; font-size:13px; color:#566455; min-height:40px; }
+.workspace { display:grid; grid-template-columns:minmax(0,1fr) 278px; gap:32px; align-items:start; }
+.car-section,.phone-section { min-width:0; }
+.workspace[data-view=car] { grid-template-columns:minmax(0,1fr); }
+.workspace[data-view=phone] { grid-template-columns:390px; justify-content:center; }
+.workspace[data-view=car] .phone-section,.workspace[data-view=phone] .car-section { display:none; }
+.device-label { display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; font-size:12px; color:#5e6a5f; }
+.device-label strong { font-weight:600; color:#293b30; }
+.car-stage,.phone-stage { width:100%; position:relative; overflow:hidden; }
+.car { width:1040px; height:568px; padding:16px; border-radius:34px; background:#101411; border:2px solid #3a4039; box-shadow:0 18px 35px #22302014; transform-origin:top left; }
+.car-screen { height:100%; border-radius:20px; overflow:hidden; background:var(--base); color:var(--ink); display:flex; flex-direction:column; }
+.car-top { height:83px; flex-shrink:0; border-bottom:1px solid var(--line); padding:0 30px; display:flex; align-items:center; gap:32px; }
+.app-name { display:flex; align-items:center; gap:12px; font-size:24px; font-weight:600; margin-right:auto; }
+.app-name .brand-mark { width:39px; height:39px; }
+.tab { height:66px; padding:0 12px; font-size:20px; border:0; color:var(--muted); background:none; position:relative; }
+.tab[aria-current=page] { color:var(--sage); }
+.tab[aria-current=page]:after { content:''; position:absolute; height:4px; bottom:0; left:12px; right:12px; border-radius:4px; background:var(--sage); }
+.car-body { flex:1; min-height:0; }
+.player { height:100%; display:grid; grid-template-columns:286px 1fr; gap:40px; align-items:center; padding:24px 44px; }
+.cover { display:block; width:100%; aspect-ratio:1; border-radius:12px; object-fit:cover; }
+.player .cover { width:274px; }
+.context { color:var(--sage); font-size:17px; margin-bottom:12px; display:flex; gap:10px; align-items:center; }
+.context svg { width:19px; height:19px; }
+.song-title { font-size:36px; line-height:1.2; font-weight:550; letter-spacing:-.7px; margin:0 0 8px; }
+.artist { color:var(--muted); margin:0; font-size:21px; line-height:1.5; }
+.timeline { margin-top:25px; }
+.track { height:4px; border-radius:4px; background:#414b42; overflow:hidden; }
+.track span { display:block; height:100%; background:var(--sage); width:32%; }
+.time { display:flex; justify-content:space-between; margin-top:8px; font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.transport { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:15px; }
+.icon-button { background:none; border:0; color:var(--ink); border-radius:50%; width:58px; height:58px; display:inline-grid; place-items:center; padding:0; flex-shrink:0; }
+.icon-button:hover { background:#ffffff0d; }
+.icon-button[aria-pressed=true] { color:var(--sage); background:#c0d7ae14; }
+.icon-button.primary { background:var(--sage); color:#24341f; width:76px; height:76px; }
+.icon-button.primary svg { width:34px; height:34px; }
+.dock { height:65px; display:flex; align-items:center; gap:25px; flex-shrink:0; padding:0 27px; background:#131714; border-top:1px solid #303930; }
+.dock-item { color:#b9c4b7; display:grid; place-items:center; width:40px; height:40px; }
+.dock-item.current { background:#344233; color:var(--sage); border-radius:13px; }
+.dock-separator { width:1px; height:26px; background:#3a443d; }
+.clock { margin-left:auto; font-size:18px; letter-spacing:.3px; }
+.dock-note { color:#8e9a8e; font-size:12px; }
+.list-screen { height:100%; display:flex; flex-direction:column; }
+.list-heading { margin:20px 30px 10px; display:flex; align-items:center; justify-content:space-between; }
+.list-heading h2 { margin:0; font-size:23px; font-weight:550; }
+.list-heading span { color:var(--muted); font-size:16px; }
+.rows { overflow:auto; padding:0 20px 12px; flex:1; min-height:0; }
+.media-row { display:flex; align-items:center; gap:17px; padding:12px; border-radius:12px; min-height:85px; border-bottom:1px solid #354034; }
+.media-row.active { background:#323e35; }
+.row-main { display:flex; align-items:center; flex:1; min-width:0; gap:17px; text-align:left; background:none; border:0; color:var(--ink); padding:0; min-height:60px; }
+.media-row .cover { width:57px; height:57px; border-radius:6px; }
+.row-copy { min-width:0; }
+.row-copy strong { display:block; font-size:21px; font-weight:500; }
+.row-copy small { display:block; color:var(--muted); font-size:16px; margin-top:4px; }
+.mini { display:flex; align-items:center; min-height:69px; padding:7px 28px; gap:14px; border-top:1px solid var(--line); }
+.mini .cover { width:45px; height:45px; border-radius:5px; }
+.mini-info { flex:1; background:none; border:0; text-align:left; color:var(--ink); min-height:52px; font-size:16px; }
+.mini-info small { color:var(--muted); margin-left:12px; }
+.failure { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; }
+.failure svg { width:40px; height:40px; color:var(--sage); }
+.failure h2 { font-size:28px; font-weight:500; margin:12px 0; }
+.failure p { margin:0 0 20px; color:var(--muted); font-size:18px; }
+.pill { display:inline-flex; align-items:center; justify-content:center; gap:10px; border:0; border-radius:30px; min-height:56px; padding:0 24px; background:var(--sage); color:#24341f; font-weight:600; font-size:18px; }
+.phone { width:390px; height:875px; border:9px solid #111612; border-radius:43px; overflow:hidden; background:var(--base); color:var(--ink); transform-origin:top left; display:flex; flex-direction:column; position:relative; box-shadow:0 14px 30px #22302015; }
+.phone-status { height:34px; padding:6px 23px 0; display:flex; align-items:center; justify-content:space-between; font-size:12px; flex-shrink:0; }
+.camera { width:11px; height:11px; background:#0a0d0a; border-radius:50%; position:absolute; top:9px; left:calc(50% - 5px); }
+.phone-header { display:flex; align-items:center; gap:12px; padding:21px 21px 16px; }
+.phone-header strong { font-size:19px; font-weight:500; }
+.phone-header small { font-size:13px; color:var(--sage); display:block; margin-top:4px; }
+.phone-connected { display:flex; align-items:center; gap:9px; color:var(--sage); font-size:13px; padding:11px 17px; margin:0 21px 20px; background:#2b382d; border-radius:10px; }
+.phone-connected svg { width:18px; height:18px; }
+.phone-main { flex:1; min-height:0; display:flex; flex-direction:column; padding:0 21px 19px; }
+.phone-main>.cover { width:100%; min-height:0; flex:1; object-fit:contain; margin-bottom:23px; }
+.phone-title { display:flex; gap:8px; align-items:center; }
+.phone-title h2 { font-size:29px; font-weight:550; letter-spacing:-.8px; margin:0 0 7px; flex:1; }
+.phone .artist { font-size:17px; }
+.phone .timeline { margin-top:22px; }
+.phone .transport { margin-top:15px; }
+.phone .icon-button { width:53px; height:56px; }
+.phone .primary { width:72px; height:72px; }
+.phone-actions { margin-top:auto; padding-top:20px; display:flex; gap:10px; }
+.phone-actions button { flex:1; border-radius:30px; background:#323e35; color:var(--ink); border:0; min-height:52px; display:flex; gap:8px; justify-content:center; align-items:center; font-size:15px; }
+.gesture { height:17px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.gesture:after { content:''; background:#b6bdb4; height:4px; width:112px; border-radius:4px; }
+.phone-list { flex:1; min-height:0; overflow:auto; }
+.phone .media-row { padding:10px 0; gap:5px; }
+.phone .row-copy strong { font-size:18px; }
+.phone .row-copy small { font-size:14px; }
+.phone .media-row .cover { width:45px; height:45px; }
+.phone .row-main { gap:10px; }
+.phone .list-heading { margin:0 0 15px; }
+.phone .list-heading h2 { font-size:25px; }
+.phone .list-heading span { font-size:13px; }
+.phone .mini { padding:6px 15px; }
+.phone .mini-info small { display:block; margin:4px 0 0; font-size:12px; }
+.phone .failure h2 { font-size:23px; }
+.phone .failure p { font-size:16px; }
+.caption { color:#60705f; font-size:13px; line-height:1.65; margin:17px 0 0; max-width:760px; }
+.caption b { color:#304632; font-weight:600; }
+.footnotes { border-top:1px solid #ccd1c7; margin-top:27px; padding-top:20px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; }
+.footnotes h3 { margin:0 0 7px; font-size:13px; font-weight:650; }
+.footnotes p { color:#667164; font-size:12px; line-height:1.65; margin:0; }
+.footnotes a { color:#385e38; }
+dialog { background:#262e29; color:var(--ink); border:1px solid var(--line); border-radius:20px; padding:24px; width:min(350px,90vw); }
+dialog::backdrop { background:#0a100bbf; }
+dialog h2 { margin-top:0; font-size:23px; }
+.stars { display:flex; gap:4px; margin:20px 0; }
+.stars button { min-height:56px; flex:1; border:0; background:#354235; color:var(--sage); border-radius:10px; font-size:18px; }
+dialog .pill { width:100%; }
+dialog p { color:var(--muted); font-size:13px; }
+@media(max-width:900px) { .board { padding:20px; } .workspace { grid-template-columns:minmax(0,1fr); } .phone-section { width:320px; max-width:100%; margin:20px auto 0; } .intro { align-items:start; flex-direction:column; gap:18px; } .footnotes { grid-template-columns:1fr; gap:16px; } .dock-note { display:none; } .workspace[data-view=phone] { grid-template-columns:minmax(0,390px); } }
+@media(max-width:400px) { .board { padding:16px 12px; } h1 { font-size:28px; } .edition { font-size:10px; max-width:100px; text-align:right; } .toolbar { gap:10px; } .toolbar label { flex-wrap:wrap; } .reset { margin-left:0; } }
+</style>
+</head>
+<body>
+<main class="board">
+<header class="masthead"><div class="brand"><span class="brand-mark" data-icon="audio"></span>Audio</div><span class="edition">Android Auto / Study 01</span></header>
+<section class="intro"><div><h1>Your music. Less reaching.</h1><p>The same playlist-first Audio, made glanceable for the drive.</p></div><nav class="segment" aria-label="Device preview"><button data-view="both" aria-pressed="true">Compare both</button><button data-view="car" aria-pressed="false">Car display</button><button data-view="phone" aria-pressed="false">Phone</button></nav></section>
+<div class="toolbar"><label>Screen <select id="screen"><option value="player">Now playing</option><option value="playlists">Playlists</option><option value="queue">Queue</option></select></label><label>Connection <select id="connection"><option value="connected">Connected</option><option value="unavailable">Server unavailable</option></select></label><button class="reset" id="reset">Reset demo</button></div>
+<div class="workspace" data-view="both">
+<section class="car-section"><div class="device-label"><strong>01 / Car display</strong><span>Landscape · illustrative host shell</span></div><div class="car-stage"><div class="car"><div class="car-screen"><header class="car-top"><div class="app-name"><span class="brand-mark" data-icon="audio"></span>Audio</div><button class="tab" data-screen="player">Now playing</button><button class="tab" data-screen="playlists">Playlists</button><button class="tab" data-screen="queue">Queue</button></header><div class="car-body" id="car-content"></div><footer class="dock" aria-label="Illustrative Android Auto system area"><span class="dock-item" data-icon="grid"></span><span class="dock-separator"></span><span class="dock-item" data-icon="map"></span><span class="dock-item current" data-icon="audio"></span><span class="dock-item" data-icon="call"></span><span class="dock-note">System controls shown for context</span><span class="clock">9:41</span><span class="dock-item" data-icon="signal"></span><span class="dock-item" data-icon="mic"></span></footer></div></div></div><p class="caption" id="car-caption"></p></section>
+<section class="phone-section"><div class="device-label"><strong>02 / Companion phone</strong><span>Linked demo</span></div><div class="phone-stage"><div class="phone"><div class="camera"></div><div class="phone-status"><span>9:41</span><span>▰ ▰ 94%</span></div><header class="phone-header"><span class="brand-mark" data-icon="audio"></span><div><strong>Audio</strong><small id="phone-context">The long way home</small></div></header><div class="phone-connected"><span data-icon="car"></span><span>Android Auto · shared listening session</span></div><div class="phone-main" id="phone-content"></div><div class="gesture"></div></div></div><p class="caption">One session, not a second queue. <b>Ratings stay on the phone</b> in this proposal; use the phone only when safely parked.</p></section>
+</div>
+<footer class="footnotes"><section><h3>Keep your place</h3><p>Resume the existing queue and position; changing screens doesn’t reshuffle. The demo starts paused and never plays real audio. No launch or autoplay policy is implied for the actual car host.</p></section><section><h3>A small, useful library</h3><p>Recent playlists first. Tap a playlist to inspect it, or its shuffle action to start a new queue. Connection setup and detailed song ratings stay off the car display in this proposal.</p></section><section><h3>Design study, not a native screen</h3><p>Artwork, music, connection states, and phone synchronization are illustrative. Android Auto controls the actual media shell and layout. <a href="https://developers.google.com/cars/design/android-auto/apps/playback-view" target="_blank" rel="noreferrer">Media design reference ↗</a></p></section></footer>
+</main>
+<dialog id="rating"><h2>Rate this song</h2><p id="rated-song"></p><div class="stars" aria-label="Song rating"></div><button class="pill" data-action="close-rating">Done</button><p>Illustrative only. Nothing is sent to Navidrome.</p></dialog>
+<script>
+const paths = {
+ audio:'<path d="M4 10v4m4-8v12m4-15v18m4-15v12m4-8v4"/>',
+ play:'<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+ pause:'<path d="M8 5v14m8-14v14" stroke-width="4"/>',
+ next:'<path d="m5 5 10 7-10 7Z" fill="currentColor" stroke="none"/><path d="M18 5v14"/>',
+ previous:'<path d="m19 5-10 7 10 7Z" fill="currentColor" stroke="none"/><path d="M6 5v14"/>',
+ shuffle:'<path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 4-3 6-6s4-6 6-6h3m-4-4 4 4-4 4"/>',
+ repeat:'<path d="m17 2 4 4-4 4M3 10V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14 0v2a2 2 0 0 1-2 2H3"/>',
+ queue:'<path d="M3 5h18M3 11h18M3 17h10m4-2 5 3-5 3Z"/>',
+ star:'<path d="m12 3 2.8 5.7 6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
+ car:'<path d="m4 9 2-5h12l2 5M3 9h18v10h-2v-3H5v3H3Zm3 4h1m10 0h1"/>',
+ map:'<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Zm6-3v15m6-12v15"/>',
+ grid:'<circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/>',
+ call:'<path d="m5 3 4 5-2 3q2 4 6 6l3-2 5 4q-1 4-5 2Q3 17 3 6q0-3 2-3Z"/>',
+ mic:'<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/>',
+ signal:'<path d="M4 19v-3m5 3v-7m5 7V8m5 11V4"/>',
+ offline:'<path d="M4 4 20 20M4 10a13 13 0 0 1 3-2m4-1a13 13 0 0 1 9 3M7 14a8 8 0 0 1 5-2m5 2-2-1m-5 5h4"/>',
+ back:'<path d="m14 5-7 7 7 7"/>'
+};
+const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.audio}</svg>`;
+document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = icon(el.dataset.icon));
+const albums = [
+ {title:'The Quiet Earth',artist:'Alder & Ash',color:'#344b37',accent:'#d5dfb5',shape:'<path d="M-30 325 140 85 310 325Z" fill="#152b22"/><path d="m130 325 156-190 143 190Z" fill="#60745c"/><circle cx="300" cy="77" r="32" fill="#d9deb0"/><path d="M0 299q190-60 400-5v106H0Z" fill="#aab39c"/>'},
+ {title:'Blue Hours',artist:'June Marlow',color:'#273f58',accent:'#f5a388',shape:'<path d="M65 0h270v400H65Z" fill="#7595a4"/><path d="M85 0h230v400H85Z" fill="#142a43"/><circle cx="200" cy="165" r="91" fill="#eea98f"/><path d="M85 196h230v204H85Z" fill="#243e56"/>'},
+ {title:'Tidal Memory',artist:'Coastline',color:'#4f7673',accent:'#dbdac1',shape:'<path d="M0 130q100-75 200 0t200 0v270H0Z" fill="#c5cbb6"/><path d="M0 180q100-75 200 0t200 0v220H0Z" fill="#74928a"/><path d="M0 230q100-75 200 0t200 0v170H0Z" fill="#294c4a"/>'},
+ {title:'After the Rain',artist:'Mira Sol',color:'#676b60',accent:'#f3d8bb',shape:'<path d="M80 300V90m55 210V60m55 240V30m55 270V80m55 220V120" stroke="#adb6a1" stroke-width="15"/><circle cx="280" cy="100" r="48" fill="#efccad"/>'}
+];
+function cover(a) {
+ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="${a.color}"/>${a.shape}<text x="22" y="33" font-family="Arial" font-size="11" letter-spacing="3" fill="${a.accent}">${a.artist.toUpperCase().replace('&','&amp;')}</text><rect y="333" width="400" height="67" fill="${a.color}"/><text x="22" y="373" font-family="Georgia" font-size="27" fill="${a.accent}">${a.title.toUpperCase()}</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+albums.forEach(a => a.art = cover(a));
+const songs = [
+ {title:'Slow light',album:0,duration:254}, {title:'Last train home',album:1,duration:226},
+ {title:'Still here',album:2,duration:271}, {title:'First light',album:3,duration:238},
+ {title:'Everything returns',album:0,duration:246}, {title:'Almost morning',album:1,duration:213},
+ {title:'Salt air',album:2,duration:244}, {title:'Two rivers',album:3,duration:267}
+];
+const playlists = [
+ {name:'The long way home',detail:'Familiar favorites for the drive',order:[0,7,3,6,5,1,4,2]},
+ {name:'Daily rotation',detail:'The songs you keep coming back to',order:[1,4,7,0,5,6,2,3]},
+ {name:'A quieter kind of evening',detail:'Less noise. A little more space.',order:[3,2,0,7,4,5,6,1]},
+ {name:'Weekend windows down',detail:'Take the scenic route',order:[6,1,5,3,0,4,2,7]}
+];
+let state;
+const initial = () => ({screen:'player',playlist:0,index:0,order:[...playlists[0].order],position:81,playing:false,shuffle:true,repeat:false,connection:'connected',pending:false,inspect:null,ratings:{}});
+state = initial();
+const current = () => songs[state.order[state.index]];
+const time = n => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2,'0')}`;
+const image = a => `<img class="cover" src="${a.art}" alt="${a.title} album artwork">`;
+const btn = (name,label,action,extra='') => `<button class="icon-button ${extra}" aria-label="${label}" data-action="${action}">${icon(name)}</button>`;
+function transport(car = false) {
+ const shuffle = `<button class="icon-button" aria-label="Shuffle" aria-pressed="${state.shuffle}" data-action="shuffle">${icon('shuffle')}</button>`;
+ const repeat = `<button class="icon-button" aria-label="Repeat" aria-pressed="${state.repeat}" data-action="repeat">${icon('repeat')}</button>`;
+ return `<div class="transport">${car ? btn('queue','Open queue','queue') : shuffle}${btn('previous','Previous track','previous')}${btn(state.playing?'pause':'play',state.playing?'Pause':'Resume','play','primary')}${btn('next','Next track','next')}${car ? shuffle : repeat}</div>`;
+}
+function timeline() {
+ const song = current();
+ return `<div class="timeline" aria-label="Playback position ${time(state.position)} of ${time(song.duration)}"><div class="track"><span style="width:${state.position/song.duration*100}%"></span></div><div class="time"><span>${time(state.position)}</span><span>${time(song.duration)}</span></div></div>`;
+}
+function mini() {
+ const s = current();
+ return `<div class="mini">${image(albums[s.album])}<button class="mini-info" data-action="player">${s.title}<small>${albums[s.album].artist}</small></button>${btn(state.playing?'pause':'play',state.playing?'Pause':'Resume','play')}</div>`;
+}
+function failure() {
+ return `<div class="failure">${icon('offline')}<h2>${state.pending?'Reconnecting…':'Can’t reach your music'}</h2><p>${state.pending?'Checking the demo connection.':'Check the server connection on your phone.'}</p><button class="pill" data-action="retry" ${state.pending?'disabled':''}>${state.pending?'Connecting…':'Try again'}</button></div>`;
+}
+function lists() {
+ if (state.screen === 'playlists' && state.inspect === null) {
+  return `<div class="list-screen"><div class="list-heading"><h2>Recent playlists</h2><span>Shuffle to start</span></div><div class="rows">${playlists.map((p,i) => `<div class="media-row ${state.playlist===i?'active':''}"><button class="row-main" data-action="inspect" data-index="${i}">${image(albums[i])}<span class="row-copy"><strong>${p.name}</strong><small>${p.detail}</small></span></button><button class="icon-button" aria-label="Shuffle and play ${p.name}" data-action="start" data-index="${i}">${icon('shuffle')}</button></div>`).join('')}</div>${mini()}</div>`;
+ }
+ const inspecting = state.inspect !== null;
+ const order = inspecting ? playlists[state.inspect].order : state.order;
+ return `<div class="list-screen"><div class="list-heading"><h2>${inspecting?playlists[state.inspect].name:'Your queue'}</h2>${inspecting?btn('back','Back to playlists','playlists'):`<span>${state.index+1} of ${order.length}</span>`}</div><div class="rows">${order.map((id,i) => {
+ const s = songs[id];
+ return `<div class="media-row ${!inspecting&&state.index===i?'active':''}"><button class="row-main" data-action="${inspecting?'inspect-song':'jump'}" data-index="${i}">${image(albums[s.album])}<span class="row-copy"><strong>${s.title}</strong><small>${albums[s.album].artist} · ${time(s.duration)}</small></span></button>${!inspecting&&state.index===i?icon(state.playing?'audio':'pause'):''}</div>`;
+ }).join('')}</div>${mini()}</div>`;
+}
+function render() {
+ const s = current(), a = albums[s.album];
+ document.querySelector('#screen').value = state.screen;
+ document.querySelector('#connection').value = state.connection;
+ document.querySelectorAll('[data-screen]').forEach(b => b.setAttribute('aria-current',b.dataset.screen===state.screen?'page':'false'));
+ document.querySelector('#phone-context').textContent = playlists[state.playlist].name;
+ const car = document.querySelector('#car-content'), phone = document.querySelector('#phone-content');
+ if (state.connection !== 'connected') { car.innerHTML = failure(); phone.innerHTML = failure(); }
+ else if (state.screen === 'player') {
+  car.innerHTML = `<section class="player">${image(a)}<div><div class="context">${icon(state.shuffle?'shuffle':'queue')}<span>${playlists[state.playlist].name}</span></div><h2 class="song-title">${s.title}</h2><p class="artist">${a.artist} · ${a.title}</p>${timeline()}${transport(true)}</div></section>`;
+  phone.innerHTML = `${image(a)}<div class="phone-title"><h2>${s.title}</h2>${btn('star',`Rate song${state.ratings[state.order[state.index]]?' · '+state.ratings[state.order[state.index]]+' stars':''}`,'rating')}</div><p class="artist">${a.artist} · ${a.title}</p>${timeline()}${transport()}<div class="phone-actions"><button data-action="playlists">${icon('shuffle')}Playlists</button><button data-action="queue">${icon('queue')}Queue</button></div>`;
+ } else {
+  car.innerHTML = lists();
+  phone.innerHTML = lists();
+ }
+ const captions = {
+  player:'<b>Resume, don’t restart.</b> A large transport and the existing shuffled queue. No rating popup, connection form, or secondary app navigation on the car player.',
+  playlists:'<b>Two clear choices.</b> Tap the name to inspect without interrupting playback. Tap shuffle to start that playlist and return directly to the player.',
+  queue:'<b>The queue you already have.</b> Choose another song without changing playlist or reshuffling. The phone follows the same illustrative listening session.'
+ };
+ document.querySelector('#car-caption').innerHTML = state.connection==='connected'?captions[state.screen]:'<b>Recover without a setup detour.</b> One retry action; detailed connection troubleshooting stays on the phone. Retry is simulated and succeeds after a short pending state.';
+}
+function navigate(screen) { state.screen=screen; state.inspect=null; render(); }
+function move(delta) {
+ if (state.index+delta>=state.order.length) { if(state.repeat) state.index=0; else {state.playing=false; state.position=current().duration; render(); return;} }
+ else state.index=Math.max(0,state.index+delta);
+ state.position=0; render();
+}
+function rating() {
+ const d=document.querySelector('#rating');
+ document.querySelector('#rated-song').textContent=current().title;
+ d.querySelector('.stars').innerHTML=Array.from({length:5},(_,i)=>`<button data-action="set-rating" data-index="${i+1}" aria-label="${i+1} stars" aria-pressed="${state.ratings[state.order[state.index]]===i+1}">${i+1} ★</button>`).join('');
+ d.showModal();
+}
+document.addEventListener('click',event => {
+ const view=event.target.closest('[data-view]');
+ if (view?.tagName==='BUTTON') {
+  document.querySelector('.workspace').dataset.view=view.dataset.view;
+  document.querySelectorAll('.segment button').forEach(b=>b.setAttribute('aria-pressed',String(b===view)));
+  fit(); return;
+ }
+ const tab=event.target.closest('[data-screen]');
+ if(tab) { navigate(tab.dataset.screen); return; }
+ const button=event.target.closest('[data-action]');
+ if(!button) return;
+ const action=button.dataset.action, index=Number(button.dataset.index);
+ if(['player','playlists','queue'].includes(action)) navigate(action);
+ else if(action==='play') { state.playing=!state.playing; render(); }
+ else if(action==='next') move(1);
+ else if(action==='previous') { if(state.position>3) {state.position=0;render();} else move(-1); }
+ else if(action==='shuffle') {
+  state.shuffle=!state.shuffle;
+  const id=state.order[state.index];
+  const rest=playlists[state.playlist].order.filter(x=>x!==id);
+  if(state.shuffle) { for(let i=rest.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]];} }
+  state.order=[id,...rest]; state.index=0; render();
+ }
+ else if(action==='repeat') {state.repeat=!state.repeat;render();}
+ else if(action==='inspect') {state.inspect=index;render();}
+ else if(action==='start') {
+  state.playlist=index; const order=[...playlists[index].order];
+  for(let i=order.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  state.order=order;state.index=0;state.position=0;state.shuffle=true;state.playing=true;navigate('player');
+ }
+ else if(action==='jump'||action==='inspect-song') {
+  if(action==='inspect-song') {state.playlist=state.inspect;state.order=[...playlists[state.inspect].order];state.shuffle=false;}
+  state.index=index;state.position=0;state.playing=true;navigate('player');
+ }
+ else if(action==='retry'&&!state.pending) {state.pending=true;render();setTimeout(()=>{state.connection='connected';state.pending=false;render();},800);}
+ else if(action==='rating') rating();
+ else if(action==='set-rating') {state.ratings[state.order[state.index]]=index;document.querySelector('#rating').close();render();document.querySelector('[data-action=rating]')?.focus();}
+ else if(action==='close-rating') document.querySelector('#rating').close();
+});
+document.querySelector('#screen').addEventListener('change',e=>navigate(e.target.value));
+document.querySelector('#connection').addEventListener('change',e=>{state.connection=e.target.value;state.playing=false;render();});
+document.querySelector('#reset').addEventListener('click',()=>{state=initial();render();});
+function fit() {
+ for(const type of ['car','phone']) {
+  const stage=document.querySelector('.'+type+'-stage'), device=stage.firstElementChild;
+  if(!stage.clientWidth) continue;
+  const scale=Math.min(1,stage.clientWidth/(type==='car'?1040:390));
+  device.style.transform=`scale(${scale})`;
+  stage.style.height=`${(type==='car'?568:875)*scale}px`;
+ }
+}
+new ResizeObserver(fit).observe(document.querySelector('.workspace'));
+window.addEventListener('resize',fit);
+setInterval(()=>{
+ if(state.playing&&state.connection==='connected') {
+  state.position++;
+  if(state.position>=current().duration) {move(1);return;}
+  // Update time without replacing controls or stealing keyboard focus.
+  document.querySelectorAll('.timeline').forEach(t=>{
+   t.setAttribute('aria-label',`Playback position ${time(state.position)} of ${time(current().duration)}`);
+   t.querySelector('.track span').style.width=`${state.position/current().duration*100}%`;
+   t.querySelector('.time span').textContent=time(state.position);
+  });
+ }
+},1000);
+render();fit();
+</script>
+</body>
+</html>

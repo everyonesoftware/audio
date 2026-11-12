@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio — playlist-first workflow, v2</title>
+<style>
+:root{color-scheme:light;--paper:#efeee9;--ink:#282d29;--muted:#666d65;--line:#d2d6cc}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px 'Segoe UI',sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #b8d6a8;outline-offset:3px}svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}button{ -webkit-tap-highlight-color:transparent }
+.board{max-width:1440px;margin:auto;padding:26px 36px 30px}.mast{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px}.brand{font-size:24px;font-weight:650;letter-spacing:-1px}.eyebrow{font:10px Consolas,monospace;text-transform:uppercase;letter-spacing:1.6px}.intro{display:flex;justify-content:space-between;align-items:end;gap:30px;padding:24px 0}.intro h1{font-size:36px;font-weight:500;letter-spacing:-1.4px;margin:7px 0 10px}.intro p{line-height:1.7;color:var(--muted);margin:0;max-width:665px}.intent{font-size:12px;line-height:1.8;color:var(--muted);max-width:235px}.intent b{color:var(--ink);font-weight:600}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-block:1px solid var(--line);flex-wrap:wrap}.toolbar-controls{display:flex;gap:8px;flex-wrap:wrap}.board-button,.toolbar select{min-height:44px;padding:0 13px;background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;font-size:12px}.board-button:hover{background:#e2e5db}.prototype-note{font-size:11px;color:var(--muted)}
+.studies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin-top:22px}.study{min-width:0}.study[hidden]{display:none}.studies.focus{grid-template-columns:minmax(0,380px);justify-content:center}.label{display:flex;align-items:center;gap:10px;margin:0 0 13px;min-height:26px}.step{font:11px Consolas,monospace;color:var(--muted)}.label h2{font-size:15px;font-weight:600;margin:0}.label small{margin-left:auto;font-size:10px;color:var(--muted)}.caption{font-size:12px;color:var(--muted);line-height:1.7;max-width:380px;margin:15px auto 0}.caption b{color:var(--ink);font-weight:600}
+.phone{background:#101411;padding:7px;border-radius:35px;height:742px;max-width:380px;margin:auto;box-shadow:0 12px 26px #20291e16,0 1px 2px #20291e35}.device{--bg:#1c211f;--surface:#262e29;--raised:#323e35;--text:#edf0e9;--sub:#aab4a9;--accent:#c0d7ae;--onaccent:#24341f;--border:#3a443d;position:relative;height:100%;border-radius:28px;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden}.status{height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:7px 20px 0;font-size:11px;font-weight:600}.status span:last-child{display:flex;align-items:center;gap:5px}.status svg{width:13px;height:13px}.camera{position:absolute;top:12px;left:calc(50% - 5px);width:10px;height:10px;border-radius:50%;background:#080a08}.screen{padding:10px 18px 14px;flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}.screen::-webkit-scrollbar{display:none}.gesture{height:18px;flex-shrink:0;display:grid;place-items:center}.gesture:after{content:'';width:90px;height:4px;background:#d6dcd1;border-radius:3px}
+.icon-button{height:44px;min-width:44px;width:44px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--text);padding:0}.icon-button:hover{background:var(--raised)}.icon-button.active{color:var(--accent);background:var(--raised)}.app-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin-bottom:12px}.app-top .context{flex:1;min-width:0}.kicker{font-size:9px;letter-spacing:1.4px;color:var(--sub);text-transform:uppercase;display:block;line-height:1.6}.context strong{display:block;font-size:14px;line-height:1.5;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.context small{display:block;color:var(--sub);font-size:10px}.badge{font-size:9px;color:var(--sub);border:1px solid var(--border);border-radius:4px;padding:3px 5px;white-space:nowrap}.status-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 13px;font-size:10px;color:var(--sub)}.status-line .saved{display:flex;gap:5px;align-items:center}.saved:before{content:'';width:5px;height:5px;background:var(--accent);border-radius:50%}
+.player-art{display:block;width:70%;aspect-ratio:1;object-fit:cover;border-radius:9px;margin:0 auto 19px;box-shadow:0 12px 23px #0003}.song-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}.song-heading h3{font-size:25px;line-height:1.2;letter-spacing:-.7px;margin:0 0 6px;font-weight:600}.song-heading p{font-size:12px;color:var(--sub);margin:0}.song-heading>div{min-width:0}.liked{color:var(--accent)}.seek{width:100%;accent-color:var(--accent);cursor:pointer;margin:13px 0 0;height:44px}.times{display:flex;justify-content:space-between;font:10px Consolas,monospace;color:var(--sub)}.play-controls{display:flex;align-items:center;justify-content:space-between;margin:13px 0 15px}.play-controls .big{width:68px;height:60px;background:var(--accent);color:var(--onaccent);border-radius:22px}.big svg{width:28px;height:28px}.primary{min-height:46px;border:0;padding:0 16px;background:var(--accent);color:var(--onaccent);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:650}.primary svg{width:18px;height:18px}.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.change-playlist{width:100%;display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);text-align:left;gap:10px}.change-playlist strong{display:block;font-size:12px;font-weight:600}.change-playlist small{display:block;font-size:10px;color:var(--sub);margin-top:3px}.change-playlist>svg:first-child{color:var(--accent)}.change-playlist>span{flex:1}.secondary-row{display:flex;justify-content:space-between;align-items:center;margin-top:7px}.text-button{border:0;background:none;min-height:44px;min-width:44px;padding:0 4px;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--sub)}.text-button svg{width:18px}.source-note{font-size:9px;letter-spacing:.6px;color:var(--sub)}
+.picker-heading{font-size:25px;letter-spacing:-.7px;line-height:1.2;margin:4px 0 8px;font-weight:600}.hint{font-size:11px;color:var(--sub);line-height:1.7;margin:0 0 15px}.search{display:flex;align-items:center;gap:9px;min-height:44px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0 11px;margin:0 0 14px;color:var(--sub)}.search svg{width:18px}.search input{min-width:0;width:100%;height:44px;border:0;background:none;color:var(--text);font-size:12px}.search input::placeholder{color:var(--sub)}.section-label{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1.1px;margin:17px 0 7px}.playlist-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:10px 0;min-height:86px}.playlist-info{min-width:0;flex:1;display:flex;align-items:center;gap:10px;color:var(--text);background:none;border:0;text-align:left;padding:0;min-height:52px}.playlist-cover{width:49px;height:49px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;border-radius:6px;flex-shrink:0}.playlist-cover img{width:100%;height:100%;min-height:0;object-fit:cover}.playlist-copy{min-width:0}.playlist-copy strong{display:block;font-size:12px;line-height:1.4;font-weight:600}.playlist-copy small{display:block;font-size:10px;color:var(--sub);margin-top:4px;line-height:1.4}.playlist-row .quick-start{width:46px;min-width:46px;height:46px;background:var(--accent);color:var(--onaccent);border:0;border-radius:13px;display:grid;place-items:center}.quick-start svg{width:20px}.row-action{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}.row-action span{font-size:8px;letter-spacing:.6px;text-transform:uppercase;color:var(--sub)}.recent-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:17px}.recent-card .playlist-row{border:0;padding:0 0 9px;min-height:60px}.recent-card .playlist-cover{width:44px;height:44px}.recent-card .resume-current{width:100%;min-height:44px}.recent-card .hint{margin:7px 0 0;font-size:10px}.empty{padding:24px 8px;text-align:left;font-size:12px;color:var(--sub);line-height:1.8}.collection-footer{margin-top:17px;padding-top:7px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:5px}.mini{margin:0 10px 4px;background:var(--surface);border:1px solid var(--border);border-radius:9px;display:flex;align-items:center;padding:5px;gap:7px;flex-shrink:0;min-height:57px}.mini-open{display:flex;align-items:center;gap:8px;color:var(--text);background:none;border:0;min-height:44px;padding:0;flex:1;text-align:left;min-width:0}.mini img{width:40px;height:40px;border-radius:5px}.mini strong{font-size:11px;display:block}.mini small{font-size:9px;color:var(--sub);display:block;margin-top:4px}.mini span{min-width:0}.mini strong,.mini small{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.detail-cover{width:42%;aspect-ratio:1;margin:6px auto 16px;display:block}.detail-top{display:flex;justify-content:center}.detail-actions{display:flex;gap:8px;margin:17px 0 10px}.detail-actions .primary{flex:1}.song-row{display:flex;align-items:center;gap:10px;min-height:57px;border-bottom:1px solid var(--border)}.song-row img{width:37px;height:37px;border-radius:4px}.song-row button{min-width:0;flex:1;min-height:48px;display:flex;align-items:center;gap:9px;background:none;border:0;color:var(--text);padding:0;text-align:left}.song-row strong{display:block;font-size:12px;line-height:1.4;font-weight:500}.song-row small{font-size:10px;color:var(--sub)}.song-row.current strong{color:var(--accent)}.song-row .number{width:17px;font-size:10px;color:var(--sub)}.warning{border:1px solid #806c48;background:#3a3428;padding:12px;border-radius:9px;font-size:11px;line-height:1.7;color:#efdbb1;margin-bottom:15px}.warning p{margin:0 0 10px}.warning .primary{min-height:44px}.storage-warning{font-size:10px;color:#efdbb1;line-height:1.5;margin-top:6px}.toast{position:absolute;bottom:24px;left:15px;right:15px;background:var(--text);color:var(--bg);border-radius:8px;padding:11px 13px;font-size:11px;z-index:3}
+.design-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;border-top:1px solid var(--line);padding-top:19px;margin-top:28px;font-size:12px;line-height:1.7;color:var(--muted)}.design-notes h3{font-size:12px;color:var(--ink);margin:0 0 6px}.design-notes p{margin:0}.footer{font-size:10px;color:var(--muted);line-height:1.7;margin-top:22px;display:flex;justify-content:space-between;gap:20px}
+@media(max-width:1100px){.board{padding:22px}.studies,.design-notes{gap:18px}.label{flex-wrap:wrap;gap:5px}.label small{width:100%;margin-left:22px}.phone{height:742px}.screen{padding-inline:14px}.intent{display:none}}
+@media(max-width:800px){.board{padding:20px}.studies{grid-template-columns:minmax(0,380px);justify-content:center;gap:28px}.label small{width:auto;margin-left:auto}.intro h1{font-size:30px}.toolbar{align-items:stretch}.toolbar-controls{width:100%}.toolbar select{width:100%}.design-notes{grid-template-columns:1fr;gap:16px}.footer{flex-direction:column;gap:5px}.intro{padding-block:20px}.intro p{font-size:12px}.screen{padding-inline:18px}}
+@media(max-width:360px){.board{padding:16px 12px}.screen{padding-inline:14px}.intro h1{font-size:27px}.mast .eyebrow{font-size:8px}.song-heading h3{font-size:23px}.play-controls .icon-button{min-width:44px;width:44px}.play-controls .big{width:62px}.playlist-cover{width:42px;height:42px}.playlist-copy strong{font-size:11px}}
+@media(prefers-reduced-motion:no-preference){button{transition:background .12s}}
+</style>
+</head>
+<body>
+<main class="board">
+<header class="mast"><div class="brand">audio</div><span class="eyebrow">Android / Workflow study 002</span></header>
+<section class="intro"><div><span class="eyebrow">Listening first. Playlists next.</span><h1>Right back where you left off.</h1><p>Open to the full player, not a library. Your playlist, track, position, and shuffle queue stay put.<br>When the mood changes, choose another playlist and go straight back to the music.</p></div><div class="intent"><b>One workflow. One neutral treatment.</b><br>These are three moments in the same experience—not competing themes.</div></section>
+<div class="toolbar"><div class="toolbar-controls"><select id="view" aria-label="Preview layout"><option value="all">Desktop · compare workflow steps</option><option value="returning">Phone · returning listener</option><option value="switching">Phone · change playlist</option><option value="first">Phone · first listen</option></select><button class="board-button" id="reopen">Reopen app</button><button class="board-button" id="reset">Reset demo</button></div><span class="prototype-note" id="persistence-note">Demo state saved only in this browser · No audio or server connection</span></div>
+<section class="studies" aria-label="Playlist-first listening workflow"></section>
+<section class="design-notes"><div><h3>01 / Continue, don’t start over</h3><p>Opening restores the full player, paused. Resume keeps the existing queue and position. It does not shuffle your playlist again.</p></div><div><h3>02 / Switch without the detour</h3><p>Change playlist opens your recent choices first. Tap a row’s shuffle control to start it and return to the full player. Tap its name to inspect instead.</p></div><div><h3>03 / Keep browsing secondary</h3><p>No listening history? Start with playlists. Albums and the complete song list live behind Browse library, not on the opening screen.</p></div></section>
+<footer class="footer"><span>INTERACTIVE MOCKUP · Fictional playlists and songs. Playback and server failures are simulated.<br>The three phones have independent sample sessions. Reopen app demonstrates a cold launch without clearing listening history.</span><span>Theme exploration is intentionally on hold.<br>Version 1 is preserved in index.html.</span></footer>
+</main>
+<script>
+'use strict';
+const icons = {
+ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+ library:'<path d="M4 5v15M9 5v15M14 4l6 15M3 3h7"/>',
+ home:'<path d="m3 10 9-7 9 7v10H4V10M9 20v-7h6v7"/>',
+ download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+ settings:'<path d="m9 3-1 3-3 1-2 4 2 3v4l4 2 3-1 3 1 4-2v-4l2-3-2-4-3-1-1-3z"/><circle cx="12" cy="12" r="3"/>',
+ play:'<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+ pause:'<path d="M8 5v14M16 5v14" stroke-width="4"/>',
+ next:'<path d="m5 5 10 7-10 7Z" fill="currentColor" stroke="none"/><path d="M19 5v14"/>',
+ previous:'<path d="m19 5-10 7 10 7Z" fill="currentColor" stroke="none"/><path d="M5 5v14"/>',
+ heart:'<path d="M20 5c-3-3-7 0-8 2-1-2-5-5-8-2-4 4 1 9 8 15 7-6 12-11 8-15Z"/>',
+ back:'<path d="m14 5-7 7 7 7"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ shuffle:'<path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 3-2 4-4m4-4c1-2 2-4 4-4h3m-4-4 4 4-4 4"/>',
+ repeat:'<path d="M4 10V7h15m-3-3 3 3-3 3M20 14v3H5m3 3-3-3 3-3"/>',
+ queue:'<path d="M3 5h17M3 10h17M3 15h10m4-1 4 3-4 3Z"/>',
+ check:'<path d="m5 12 4 4L20 5"/>',
+ wifi:'<path d="M3 8c5-4 13-4 18 0M6 12c4-3 8-3 12 0m-9 4c2-2 4-2 6 0"/><circle cx="12" cy="20" r=".7"/>',
+ battery:'<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M6 10h9v4H6Z" fill="currentColor"/>',
+ signal:'<path d="M5 19v-3m5 3v-7m5 7V8m5 11V4"/>'
+};
+const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.library}</svg>`;
+const esc = (str) => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const albums = [
+ {title:'The Quiet Earth',artist:'Alder & Ash',year:'2025',color:'#344b37',accent:'#d5dfb5',design:'earth',tracks:['A clearing','Slow light','The quiet earth','Everything returns','Between the pines','Stay a little longer']},
+ {title:'Blue Hours',artist:'June Marlow',year:'2024',color:'#273f58',accent:'#f5a388',design:'blue',tracks:['Last train home','Blue hours','Room with a view','Almost morning','A little further','Paper moon']},
+ {title:'Soft Focus',artist:'Low Season',year:'2025',color:'#a74c32',accent:'#f0ca93',design:'soft',tracks:['An open window','Soft focus','In the middle','Falling into place','Warm water','Half asleep']},
+ {title:'Tidal Memory',artist:'Coastline',year:'2023',color:'#4f7673',accent:'#dbdac1',design:'tide',tracks:['Salt air','Tidal memory','Offshore','Weightless','Still here','The way back']},
+ {title:'Small Worlds',artist:'The Satellites',year:'2024',color:'#917937',accent:'#f7e6ad',design:'worlds',tracks:['Near enough','Small worlds','Here and there','Orbit','Sunday people','Home again']},
+ {title:'After the Rain',artist:'Mira Sol',year:'2025',color:'#676b60',accent:'#f3d8bb',design:'rain',tracks:['First light','After the rain','Two rivers','Passing through','A softer place','The garden']}
+];
+function cover(album){
+ let graphic='';
+ if(album.design==='earth') graphic='<path d="M-30 325 140 85 310 325Z" fill="#152b22"/><path d="m130 325 156-190 143 190Z" fill="#60745c"/><circle cx="300" cy="77" r="32" fill="#d9deb0"/><path d="M0 299q190-60 400-5v106H0Z" fill="#aab39c"/>';
+ if(album.design==='blue') graphic='<path d="M65 0h270v400H65Z" fill="#7595a4"/><path d="M85 0h230v400H85Z" fill="#142a43"/><circle cx="200" cy="165" r="91" fill="#eea98f"/><path d="M85 196h230v204H85Z" fill="#243e56"/><path d="M85 220h230m-230 20h230m-230 25h230m-230 30h230" stroke="#708fa3" stroke-width="2"/>';
+ if(album.design==='soft') graphic='<circle cx="200" cy="200" r="140" fill="#e8b385"/><circle cx="200" cy="200" r="100" fill="#bd6549"/><circle cx="200" cy="200" r="63" fill="#f4ce9f"/><circle cx="200" cy="200" r="26" fill="#9c4734"/>';
+ if(album.design==='tide') graphic='<path d="M0 130q100-75 200 0t200 0v270H0Z" fill="#c5cbb6"/><path d="M0 180q100-75 200 0t200 0v220H0Z" fill="#74928a"/><path d="M0 230q100-75 200 0t200 0v170H0Z" fill="#294c4a"/><path d="M0 280q100-75 200 0t200 0v120H0Z" fill="#9eb5a6"/>';
+ if(album.design==='worlds') graphic='<circle cx="200" cy="200" r="130" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="85" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="30" fill="#f7e6ad"/><circle cx="290" cy="108" r="17" fill="#332f25"/><circle cx="126" cy="238" r="11" fill="#f7e6ad"/>';
+ if(album.design==='rain') graphic='<path d="M80 300V90m55 210V60m55 240V30m55 270V80m55 220V120" stroke="#adb6a1" stroke-width="15"/><circle cx="280" cy="100" r="48" fill="#efccad"/><path d="M0 300q200-70 400 0v100H0Z" fill="#3a4b40"/>';
+ const text=album.design==='soft'?'SOFT / FOCUS':album.title.toUpperCase();
+ const xml=`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="${album.color}"/>${graphic}<text x="22" y="33" font-family="Arial,sans-serif" font-size="11" letter-spacing="3" fill="${album.accent}">${album.artist.toUpperCase().replace('&','&amp;')}</text><rect y="333" width="400" height="67" fill="${album.color}"/><text x="22" y="373" font-family="Georgia,serif" font-size="27" fill="${album.accent}">${text}</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);
+}
+albums.forEach(a=>a.art=cover(a));
+
+const playlists = [
+  {id:'long-way',name:'The long way home',description:'Familiar favorites for the drive.',albums:[0,1,3,5],songs:[[0,1],[1,0],[3,4],[5,0],[0,3],[1,3],[3,0],[5,2],[0,0],[1,5],[3,2],[5,4]]},
+  {id:'daily',name:'Daily rotation',description:'The songs you keep coming back to.',albums:[2,4,1,0],songs:[[2,0],[4,1],[1,2],[0,4],[2,3],[4,4],[1,4],[0,5]]},
+  {id:'quiet',name:'A quieter kind of evening',description:'Less noise. A little more space.',albums:[5,0,3,2],songs:[[5,3],[0,2],[3,1],[2,5],[5,5],[0,1],[3,5],[2,2]]},
+  {id:'weekend',name:'Weekend windows down',description:'A good reason to take the scenic route.',albums:[4,2,1,3],songs:[[4,0],[2,1],[1,1],[3,3],[4,3],[2,4],[1,0],[3,0]]},
+  {id:'focus',name:'Deep focus',description:'A steady backdrop for getting into it.',albums:[3,5,0,4],songs:[[3,2],[5,1],[0,0],[4,2],[3,4],[5,4],[0,3],[4,5]]}
+];
+const icon = name => svg(name==='chevron'?'next':name);
+const safe = esc;
+const key = 'audio-playlist-workflow-v2-';
+const scenarios = [
+  {id:'returning',number:'01',label:'Open the app',tag:'Your usual session',caption:'<b>The player is the starting point.</b> The same song, position, and shuffle queue are waiting. Tap Resume; no library navigation, no new shuffle.'},
+  {id:'switching',number:'02',label:'Choose the next playlist',tag:'A change of mood',caption:'<b>Recent playlists are one step away.</b> Each has a direct shuffle action. Picking one starts the session and opens the full player automatically.'},
+  {id:'first',number:'03',label:'Before the first listen',tag:'No session yet',caption:'<b>Playlists, not albums.</b> First launch puts the thing you actually choose front and center. After the first play, future launches open the player.'}
+];
+const defaultSession = () => ({playlist:'long-way',order:[0,7,3,10,5,1,8,4,11,2,9,6],index:0,position:81,shuffle:true,repeat:false,liked:false});
+let storageAvailable=true;
+function loadState(id) {
+  let saved=null;
+  try { saved=JSON.parse(localStorage.getItem(key+id)); } catch { storageAvailable=false; }
+  const session = saved?.session ?? (id==='first'?null:defaultSession());
+  const valid = session && playlists.some(p=>p.id===session.playlist) && Array.isArray(session.order) && session.order.length===playlistById(session.playlist).songs.length && new Set(session.order).size===session.order.length && session.order.every(n=>Number.isInteger(n)&&n>=0&&n<session.order.length) && Number.isInteger(session.index) && session.index>=0 && session.index<session.order.length && Number.isFinite(session.position) && session.position>=0 && session.position<=258;
+  return {session:valid?session:null,recents:Array.isArray(saved?.recents)?saved.recents.filter(p=>playlists.some(x=>x.id===p)):(id==='first'?[]:['long-way','daily','quiet']),playing:false,screen:saved?.session&&valid?'player':id==='switching'?'playlists':valid?'player':'playlists',query:'',inspect:null,unavailable:false};
+}
+function playlistById(id){return playlists.find(p=>p.id===id)||playlists[0]}
+const states=Object.fromEntries(scenarios.map(s=>[s.id,loadState(s.id)]));
+function save(id){try{localStorage.setItem(key+id,JSON.stringify({session:states[id].session,recents:states[id].recents}))}catch{storageAvailable=false;document.querySelector('#persistence-note').textContent='Browser storage unavailable · Reopen simulation works, but browser reload may not remember'}}
+function song(s){const p=playlistById(s.session.playlist);const [albumIndex,trackIndex]=p.songs[s.session.order[s.session.index]];return {album:albums[albumIndex],title:albums[albumIndex].tracks[trackIndex]}}
+function time(seconds){return `${Math.floor(seconds/60)}:${String(Math.round(seconds)%60).padStart(2,'0')}`}
+function btn(name,label,action,extra=''){return `<button class="icon-button ${extra}" data-action="${action}" aria-label="${safe(label)}" title="${safe(label)}">${icon(name)}</button>`}
+function mosaic(p,extra=''){return `<span class="playlist-cover ${extra}" aria-hidden="true">${p.albums.map(i=>`<img src="${albums[i].art}" alt="">`).join('')}</span>`}
+function playerHeader(title,kicker,action='playlists',back=false){return `<div class="app-top">${back?btn('back','Back to player','back'):''}<div class="context"><span class="kicker">${kicker}</span><strong>${safe(title)}</strong></div>${back?'':btn('library','Change playlist',action)}</div>`}
+function player(s){
+  if(!s.session)return picker(s);
+  const p=playlistById(s.session.playlist),t=song(s);
+  return playerHeader(p.name,'Listening to')+`<div class="status-line"><span class="saved">${s.playing?'Playing · simulated':'Ready to resume'}</span><span>Track ${s.session.index+1} of ${p.songs.length}</span></div>
+    ${s.unavailable?'<div class="warning"><p>Sample state: this playlist cannot be reached. Your queue and position are kept; nothing starts over.</p><button class="primary secondary" data-action="retry">Retry playlist</button></div>':''}
+    <img class="player-art" src="${t.album.art}" alt="${safe(t.album.title)} — sample artwork">
+    <div class="song-heading"><div><h3>${safe(t.title)}</h3><p>${safe(t.album.artist)}</p></div><button class="icon-button ${s.session.liked?'liked':''}" data-action="like" aria-label="${s.session.liked?'Remove favorite':'Favorite song'}" aria-pressed="${s.session.liked}">${icon('heart')}</button></div>
+    <input class="seek" type="range" min="0" max="258" value="${s.session.position}" aria-label="Playback position">
+    <div class="times"><span class="elapsed">${time(s.session.position)}</span><span>4:18</span></div>
+    <div class="play-controls"><button class="icon-button ${s.session.shuffle?'active':''}" data-action="shuffle" aria-label="Shuffle" aria-pressed="${s.session.shuffle}">${icon('shuffle')}</button>${btn('previous','Previous track','previous')}<button class="icon-button big" data-action="resume" aria-label="${s.playing?'Pause':'Resume playback'}" ${s.unavailable?'disabled':''}>${icon(s.playing?'pause':'play')}</button>${btn('next','Next track','next')}<button class="icon-button ${s.session.repeat?'active':''}" data-action="repeat" aria-label="Repeat" aria-pressed="${s.session.repeat}">${icon('repeat')}</button></div>
+    <button class="change-playlist" data-action="playlists">${icon('library')}<span><strong>Change playlist</strong><small>Recent first · shuffle and play in one tap</small></span>${icon('down')}</button>
+    <div class="secondary-row"><button class="text-button" data-action="queue">${icon('queue')}Queue</button><span class="source-note">${s.session.shuffle?'SHUFFLE ON':'IN ORDER'} · SAVED SESSION</span></div>`;
+}
+function playlistRow(p,s){const current=s.session?.playlist===p.id;return `<div class="playlist-row"><button class="playlist-info" data-inspect="${p.id}" aria-label="View ${safe(p.name)}">${mosaic(p)}<span class="playlist-copy"><strong>${safe(p.name)}</strong><small>${p.songs.length} songs${current?' · Current playlist':''}</small></span></button><div class="row-action"><button class="quick-start" data-start="${p.id}" aria-label="${current?'Resume':'Shuffle and play'} ${safe(p.name)}">${icon(current?'play':'shuffle')}</button><span>${current?'Resume':'Shuffle'}</span></div></div>`}
+function playlistResults(s){
+ const found=playlists.filter(p=>(p.name+' '+p.description).toLowerCase().includes(s.query.toLowerCase()));
+ if(!found.length)return '<div class="empty" role="status">No playlists match.<br>Try another name, or clear the search.</div>';
+ if(s.query)return found.map(p=>playlistRow(p,s)).join('');
+ const recent=s.recents.map(playlistById).filter(p=>p.id!==s.session?.playlist);
+ const rest=playlists.filter(p=>!recent.includes(p)&&p.id!==s.session?.playlist);
+ return `${recent.length?'<div class="section-label">Recently played</div>'+recent.map(p=>playlistRow(p,s)).join(''):''}${rest.length?'<div class="section-label">Your playlists</div>'+rest.map(p=>playlistRow(p,s)).join(''):''}`;
+}
+function picker(s){
+ const p=s.session&&playlistById(s.session.playlist);
+ return `<div class="app-top">${s.session?btn('back','Back to player','back'):'<span class="kicker">Audio / start listening</span>'}<span class="badge">PLAYLISTS FIRST</span></div>
+   <h3 class="picker-heading">${s.session?'What’s next?':'Pick your first playlist.'}</h3><p class="hint">${s.session?'Your usual rotation, right here. Shuffle a different playlist to start it in the full player.':'Tap shuffle to start listening. Next time, you’ll open right to the player.'}</p>
+   <label class="search">${icon('search')}<input type="search" aria-label="Search playlists" placeholder="Find a playlist" value="${safe(s.query)}"></label>
+   <div class="playlist-results">${playlistResults(s)}</div>
+   <div class="collection-footer"><button class="text-button" data-action="browse">${icon('library')}Browse library</button><span class="source-note">SECONDARY</span></div>`;
+}
+function details(s){const p=playlistById(s.inspect);return `<div class="app-top">${btn('back','Back to playlists','playlists')}<span class="kicker">Playlist details</span></div><div class="detail-top">${mosaic(p)}</div><h3 class="picker-heading">${safe(p.name)}</h3><p class="hint">${safe(p.description)} · ${p.songs.length} sample songs</p><div class="detail-actions"><button class="primary" data-start="${p.id}" data-reshuffle="true">${icon('shuffle')}Shuffle & play</button></div><p class="hint">Starts a fresh shuffle and opens the full player.</p>${p.songs.map(([ai,ti],i)=>`<div class="song-row"><button data-specific="${p.id}" data-index="${i}"><span class="number">${i+1}</span><img src="${albums[ai].art}" alt=""><span><strong>${safe(albums[ai].tracks[ti])}</strong><small>${safe(albums[ai].artist)}</small></span></button></div>`).join('')}`}
+function queue(s){if(!s.session)return picker(s);const p=playlistById(s.session.playlist);return `<div class="app-top">${btn('back','Back to player','back')}<span class="kicker">Your saved queue</span></div><h3 class="picker-heading">${safe(p.name)}</h3><p class="hint">${s.session.shuffle?'Shuffled once, then kept in this order.':'Playing in playlist order.'} Resuming does not make a new queue.</p>${s.session.order.map((n,i)=>{const [a,t]=p.songs[n];return `<div class="song-row ${i===s.session.index?'current':''}"><button data-queue-index="${i}" aria-label="Play ${safe(albums[a].tracks[t])}"><span class="number">${i+1}</span><img src="${albums[a].art}" alt=""><span><strong>${safe(albums[a].tracks[t])}</strong><small>${safe(albums[a].artist)}${i===s.session.index?' · Current track':''}</small></span></button></div>`}).join('')}`}
+function browse(s){return `<div class="app-top">${btn('back','Back to playlists','playlists')}<span class="kicker">Secondary browsing</span></div><h3 class="picker-heading">Your library</h3><p class="hint">Available when you want it. Not the starting point.</p><button class="change-playlist" data-action="playlists">${icon('library')}<span><strong>Playlists</strong><small>Your default way to choose music</small></span>${icon('back')}</button><div class="section-label">Browse by album</div>${albums.map(a=>`<div class="song-row"><img src="${a.art}" alt=""><span><strong>${safe(a.title)}</strong><small>${safe(a.artist)}</small></span></div>`).join('')}<p class="hint" style="margin-top:14px">Album and all-song browsing are context only in this workflow study.</p>`}
+function mini(s){if(!s.session||s.screen==='player')return '';const t=song(s);return `<div class="mini"><button class="mini-open" data-action="back" aria-label="Open full player"><img src="${t.album.art}" alt=""><span><strong>${safe(t.title)}</strong><small>${safe(playlistById(s.session.playlist).name)}</small></span></button><button class="icon-button" data-action="mini-play" aria-label="${s.playing?'Pause':'Resume playback'}">${icon(s.playing?'pause':'play')}</button></div>`}
+function render(id){const s=states[id];const d=document.querySelector(`[data-device="${id}"]`);d.dataset.screen=s.screen;d.innerHTML=`<div class="camera" aria-hidden="true"></div><div class="status"><span>9:41</span><span>${icon('signal')}${icon('wifi')}${icon('battery')}</span></div><div class="screen">${({player,playlists:picker,details,queue,browse})[s.screen](s)}</div>${mini(s)}<div class="gesture" aria-hidden="true"></div>`}
+function shuffleOrder(length){const out=Array.from({length},(_,i)=>i);for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
+function start(id,playlistId,fresh=false,specific=null){const s=states[id],p=playlistById(playlistId);if(s.session?.playlist!==p.id||fresh||specific!==null){s.session={playlist:p.id,order:specific===null?shuffleOrder(p.songs.length):p.songs.map((_,i)=>i),index:specific??0,position:0,shuffle:specific===null,repeat:false,liked:false}}s.playing=true;s.unavailable=false;s.screen='player';s.query='';s.recents=[p.id,...s.recents.filter(x=>x!==p.id)];save(id);render(id)}
+function reopen(id){const s=states[id];s.screen=s.session?'player':'playlists';s.playing=false;s.query='';render(id)}
+function toast(id,text){const d=document.querySelector(`[data-device="${id}"]`);d.querySelector('.toast')?.remove();const el=document.createElement('div');el.className='toast';el.role='status';el.textContent=text;d.append(el);setTimeout(()=>el.remove(),2200)}
+const studies=document.querySelector('.studies');studies.innerHTML=scenarios.map(s=>`<article class="study" data-study="${s.id}"><div class="label"><span class="step">${s.number}</span><h2>${s.label}</h2><small>${s.tag}</small></div><div class="phone"><section class="device" data-device="${s.id}" aria-label="${s.label} prototype"></section></div><p class="caption">${s.caption}</p></article>`).join('');scenarios.forEach(s=>render(s.id));
+function selected(){return document.querySelector('#view').value}
+function activeIds(){return selected()==='all'?scenarios.map(s=>s.id):[selected()]}
+function applyView(){const val=location.hash.slice(1).split('/')[0];const id=scenarios.some(s=>s.id===val)?val:'all';document.querySelector('#view').value=id;studies.classList.toggle('focus',id!=='all');document.querySelectorAll('.study').forEach(s=>s.hidden=id!=='all'&&s.dataset.study!==id)}
+document.querySelector('#view').addEventListener('change',e=>{location.hash=e.target.value;applyView()});window.addEventListener('hashchange',applyView);applyView();
+document.querySelector('#reopen').addEventListener('click',()=>activeIds().forEach(reopen));
+document.querySelector('#reset').addEventListener('click',()=>{for(const scenario of scenarios){try{localStorage.removeItem(key+scenario.id)}catch{}states[scenario.id]=loadState(scenario.id);render(scenario.id)}});
+studies.addEventListener('input',e=>{const device=e.target.closest('[data-device]');if(!device)return;const id=device.dataset.device,s=states[id];if(e.target.matches('input[type=search]')){s.query=e.target.value;device.querySelector('.playlist-results').innerHTML=playlistResults(s)}if(e.target.matches('.seek')){s.session.position=Number(e.target.value);save(id);device.querySelector('.elapsed').textContent=time(s.session.position)}});
+studies.addEventListener('click',e=>{const b=e.target.closest('button'),d=e.target.closest('[data-device]');if(!b||!d)return;const id=d.dataset.device,s=states[id];
+ if(b.dataset.start){start(id,b.dataset.start,b.dataset.reshuffle==='true');return}
+ if(b.dataset.specific){start(id,b.dataset.specific,false,Number(b.dataset.index));return}
+ if(b.dataset.inspect){s.inspect=b.dataset.inspect;s.screen='details';render(id);return}
+ if(b.dataset.queueIndex!==undefined){s.session.index=Number(b.dataset.queueIndex);s.session.position=0;s.playing=true;s.screen='player';save(id);render(id);return}
+ const action=b.dataset.action;
+ if(action==='playlists'){s.screen='playlists';s.query=''}
+ else if(action==='back'){s.screen=s.session?'player':'playlists'}
+ else if(action==='queue')s.screen='queue';
+ else if(action==='browse')s.screen='browse';
+ else if(action==='resume'||action==='mini-play'){if(s.unavailable)return;s.playing=!s.playing;if(action==='mini-play')s.screen='player'}
+ else if(action==='next'||action==='previous'){if(!s.session)return;s.session.index=(s.session.index+(action==='next'?1:s.session.order.length-1))%s.session.order.length;s.session.position=0}
+ else if(action==='like')s.session.liked=!s.session.liked;
+ else if(action==='repeat')s.session.repeat=!s.session.repeat;
+ else if(action==='shuffle'){
+   const current=s.session.order[s.session.index];s.session.shuffle=!s.session.shuffle;
+   const remainder=s.session.order.filter(n=>n!==current);
+   s.session.order=[current,...(s.session.shuffle?shuffleOrder(remainder.length).map(n=>remainder[n]):remainder.sort((a,b)=>a-b))];s.session.index=0;
+ }
+ else if(action==='retry'){s.unavailable=false;render(id);toast(id,'Simulated recovery · your place is unchanged');return}
+ else return;
+ save(id);render(id);
+});
+window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;for(const id of activeIds()){if(states[id].screen!=='player'&&states[id].session){states[id].screen='player';render(id);document.querySelector(`[data-device="${id}"] [data-action="playlists"]`)?.focus()}}});
+// Review-only API for an unavailable-source state; never contacts a server.
+window.audioDemo={unavailable(id='returning'){states[id].unavailable=true;states[id].screen='player';states[id].playing=false;render(id)}};
+if(!storageAvailable)document.querySelector('#persistence-note').textContent='Browser storage unavailable · Changes may not survive reload';
+</script>
+</body>
+</html>

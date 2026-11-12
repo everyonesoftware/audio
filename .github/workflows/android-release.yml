@@ -1,0 +1,128 @@
+name: Build and release Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build signed APK
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Check signing configuration
+        shell: bash
+        env:
+          AUDIO_KEYSTORE_BASE64: ${{ secrets.AUDIO_KEYSTORE_BASE64 }}
+          AUDIO_KEYSTORE_PASSWORD: ${{ secrets.AUDIO_KEYSTORE_PASSWORD }}
+          AUDIO_KEY_ALIAS: ${{ secrets.AUDIO_KEY_ALIAS }}
+          AUDIO_KEY_PASSWORD: ${{ secrets.AUDIO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in AUDIO_KEYSTORE_BASE64 AUDIO_KEYSTORE_PASSWORD AUDIO_KEY_ALIAS AUDIO_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository secret: $name. See android/RELEASING.md."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Derive version from complete Git history
+        id: version
+        run: python3 scripts/android-release.py version --github-output "$GITHUB_OUTPUT"
+
+      - name: Install pinned Android SDK packages
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
+
+      - name: Test release tooling
+        run: python3 -m unittest discover -s tests -p test_android_release.py -v
+
+      - name: Run native unit tests and lint
+        env:
+          COMMIT_COUNT: ${{ steps.version.outputs.count }}
+        run: bash android/gradlew -p android :app:testDebugUnitTest :app:lintDebug "-PaudioCommitCount=$COMMIT_COUNT" --no-daemon
+
+      - name: Build and verify signed release APK
+        shell: bash
+        env:
+          COMMIT_COUNT: ${{ steps.version.outputs.count }}
+          AUDIO_KEYSTORE_BASE64: ${{ secrets.AUDIO_KEYSTORE_BASE64 }}
+          AUDIO_KEYSTORE_PASSWORD: ${{ secrets.AUDIO_KEYSTORE_PASSWORD }}
+          AUDIO_KEY_ALIAS: ${{ secrets.AUDIO_KEY_ALIAS }}
+          AUDIO_KEY_PASSWORD: ${{ secrets.AUDIO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export AUDIO_KEYSTORE_PATH="$RUNNER_TEMP/audio-release.jks"
+          trap 'rm -f "$AUDIO_KEYSTORE_PATH"' EXIT
+          printf '%s' "$AUDIO_KEYSTORE_BASE64" | base64 --decode > "$AUDIO_KEYSTORE_PATH"
+          bash android/gradlew -p android :app:assembleRelease "-PaudioCommitCount=$COMMIT_COUNT" --no-daemon
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose android/app/build/outputs/apk/release/app-release.apk
+          python3 scripts/android-release.py package --directory dist/android
+
+      - name: Retain versioned APK and checksums
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audio-release-${{ github.sha }}
+          path: |
+            dist/android/*.apk
+            dist/android/*.sha256
+            dist/android/release.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+          archive: true
+          include-hidden-files: false
+
+  publish:
+    name: Publish verified GitHub release
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # Serialize publication/latest promotion; pending jobs may be coalesced by GitHub.
+    concurrency:
+      group: audio-apk-publication
+      cancel-in-progress: false
+    steps:
+      - name: Check out the exact source commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download this run's signed package
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: audio-release-${{ github.sha }}
+          path: dist/android
+          digest-mismatch: error
+
+      - name: Publish and read back release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 scripts/android-release.py publish --directory dist/android --repository "$GH_REPO"

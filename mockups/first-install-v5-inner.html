@@ -1,0 +1,1274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio — first install, libraries & ratings · v3</title>
+<style>
+
+:root{color-scheme:light;--paper:#efeee9;--ink:#282d29;--muted:#666d65;--line:#d2d6cc}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px 'Segoe UI',sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default;opacity:.45}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #b8d6a8;outline-offset:3px}
+svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+button{ -webkit-tap-highlight-color:transparent }
+
+.board{max-width:1440px;margin:auto;padding:26px 36px 30px}
+.mast{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px}
+.brand{font-size:24px;font-weight:650;letter-spacing:-1px}
+.eyebrow{font:10px Consolas,monospace;text-transform:uppercase;letter-spacing:1.6px}
+.intro{display:flex;justify-content:space-between;align-items:end;gap:30px;padding:24px 0}
+.intro h1{font-size:36px;font-weight:500;letter-spacing:-1.4px;margin:7px 0 10px}
+.intro p{line-height:1.7;color:var(--muted);margin:0;max-width:665px}
+.intent{font-size:12px;line-height:1.8;color:var(--muted);max-width:235px}
+.intent b{color:var(--ink);font-weight:600}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-block:1px solid var(--line);flex-wrap:wrap}
+.toolbar-controls{display:flex;gap:8px;flex-wrap:wrap}
+.board-button,.toolbar select{min-height:44px;padding:0 13px;background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;font-size:12px}
+.board-button:hover{background:#e2e5db}
+.prototype-note{font-size:11px;color:var(--muted)}
+
+.studies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin-top:22px}
+.study{min-width:0}
+.study[hidden]{display:none}
+.studies.focus{grid-template-columns:minmax(0,380px);justify-content:center}
+.label{display:flex;align-items:center;gap:10px;margin:0 0 13px;min-height:26px}
+.step{font:11px Consolas,monospace;color:var(--muted)}
+.label h2{font-size:15px;font-weight:600;margin:0}
+.label small{margin-left:auto;font-size:10px;color:var(--muted)}
+.caption{font-size:12px;color:var(--muted);line-height:1.7;max-width:380px;margin:15px auto 0}
+.caption b{color:var(--ink);font-weight:600}
+
+.phone{background:#101411;padding:7px;border-radius:35px;height:742px;max-width:380px;margin:auto;box-shadow:0 12px 26px #20291e16,0 1px 2px #20291e35}
+.device{--bg:#1c211f;--surface:#262e29;--raised:#323e35;--text:#edf0e9;--sub:#aab4a9;--accent:#c0d7ae;--onaccent:#24341f;--border:#3a443d;position:relative;height:100%;border-radius:28px;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
+.status{height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:7px 20px 0;font-size:11px;font-weight:600}
+.status span:last-child{display:flex;align-items:center;gap:5px}
+.status svg{width:13px;height:13px}
+.camera{position:absolute;top:12px;left:calc(50% - 5px);width:10px;height:10px;border-radius:50%;background:#080a08}
+.screen{padding:10px 18px 14px;flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.gesture{height:18px;flex-shrink:0;display:grid;place-items:center}
+.gesture:after{content:'';width:90px;height:4px;background:#d6dcd1;border-radius:3px}
+
+.icon-button{height:44px;min-width:44px;width:44px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--text);padding:0}
+.icon-button:hover{background:var(--raised)}
+.icon-button.active{color:var(--accent);background:var(--raised)}
+.app-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin-bottom:12px}
+.app-top .context{flex:1;min-width:0}
+.kicker{font-size:9px;letter-spacing:1.4px;color:var(--sub);text-transform:uppercase;display:block;line-height:1.6}
+.context strong{display:block;font-size:14px;line-height:1.5;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.context small{display:block;color:var(--sub);font-size:10px}
+.badge{font-size:9px;color:var(--sub);border:1px solid var(--border);border-radius:4px;padding:3px 5px;white-space:nowrap}
+.status-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 13px;font-size:10px;color:var(--sub)}
+.status-line .saved{display:flex;gap:5px;align-items:center}
+.saved:before{content:'';width:5px;height:5px;background:var(--accent);border-radius:50%}
+
+.player-art{display:block;width:70%;aspect-ratio:1;object-fit:cover;border-radius:9px;margin:0 auto 19px;box-shadow:0 12px 23px #0003}
+.song-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.song-heading h3{font-size:25px;line-height:1.2;letter-spacing:-.7px;margin:0 0 6px;font-weight:600}
+.song-heading p{font-size:12px;color:var(--sub);margin:0}
+.song-heading>div{min-width:0}
+.liked{color:var(--accent)}
+.seek{width:100%;accent-color:var(--accent);cursor:pointer;margin:13px 0 0;height:44px}
+.times{display:flex;justify-content:space-between;font:10px Consolas,monospace;color:var(--sub)}
+.play-controls{display:flex;align-items:center;justify-content:space-between;margin:13px 0 15px}
+.play-controls .big{width:68px;height:60px;background:var(--accent);color:var(--onaccent);border-radius:22px}
+.big svg{width:28px;height:28px}
+.primary{min-height:46px;border:0;padding:0 16px;background:var(--accent);color:var(--onaccent);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:650}
+.primary svg{width:18px;height:18px}
+.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.change-playlist{width:100%;display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);text-align:left;gap:10px}
+.change-playlist strong{display:block;font-size:12px;font-weight:600}
+.change-playlist small{display:block;font-size:10px;color:var(--sub);margin-top:3px}
+.change-playlist>svg:first-child{color:var(--accent)}
+.change-playlist>span{flex:1}
+.secondary-row{display:flex;justify-content:space-between;align-items:center;margin-top:7px}
+.text-button{border:0;background:none;min-height:44px;min-width:44px;padding:0 4px;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--sub)}
+.text-button svg{width:18px}
+.source-note{font-size:9px;letter-spacing:.6px;color:var(--sub)}
+
+.picker-heading{font-size:25px;letter-spacing:-.7px;line-height:1.2;margin:4px 0 8px;font-weight:600}
+.hint{font-size:11px;color:var(--sub);line-height:1.7;margin:0 0 15px}
+.search{display:flex;align-items:center;gap:9px;min-height:44px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0 11px;margin:0 0 14px;color:var(--sub)}
+.search svg{width:18px}
+.search input{min-width:0;width:100%;height:44px;border:0;background:none;color:var(--text);font-size:12px}
+.search input::placeholder{color:var(--sub)}
+.section-label{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1.1px;margin:17px 0 7px}
+.playlist-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:10px 0;min-height:86px}
+.playlist-info{min-width:0;flex:1;display:flex;align-items:center;gap:10px;color:var(--text);background:none;border:0;text-align:left;padding:0;min-height:52px}
+.playlist-cover{width:49px;height:49px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;border-radius:6px;flex-shrink:0}
+.playlist-cover img{width:100%;height:100%;min-height:0;object-fit:cover}
+.playlist-copy{min-width:0}
+.playlist-copy strong{display:block;font-size:12px;line-height:1.4;font-weight:600}
+.playlist-copy small{display:block;font-size:10px;color:var(--sub);margin-top:4px;line-height:1.4}
+.playlist-row .quick-start{width:46px;min-width:46px;height:46px;background:var(--accent);color:var(--onaccent);border:0;border-radius:13px;display:grid;place-items:center}
+.quick-start svg{width:20px}
+.row-action{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+.row-action span{font-size:8px;letter-spacing:.6px;text-transform:uppercase;color:var(--sub)}
+.recent-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:17px}
+.recent-card .playlist-row{border:0;padding:0 0 9px;min-height:60px}
+.recent-card .playlist-cover{width:44px;height:44px}
+.recent-card .resume-current{width:100%;min-height:44px}
+.recent-card .hint{margin:7px 0 0;font-size:10px}
+.empty{padding:24px 8px;text-align:left;font-size:12px;color:var(--sub);line-height:1.8}
+.collection-footer{margin-top:17px;padding-top:7px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:5px}
+.mini{margin:0 10px 4px;background:var(--surface);border:1px solid var(--border);border-radius:9px;display:flex;align-items:center;padding:5px;gap:7px;flex-shrink:0;min-height:57px}
+.mini-open{display:flex;align-items:center;gap:8px;color:var(--text);background:none;border:0;min-height:44px;padding:0;flex:1;text-align:left;min-width:0}
+.mini img{width:40px;height:40px;border-radius:5px}
+.mini strong{font-size:11px;display:block}
+.mini small{font-size:9px;color:var(--sub);display:block;margin-top:4px}
+.mini span{min-width:0}
+.mini strong,.mini small{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.detail-cover{width:42%;aspect-ratio:1;margin:6px auto 16px;display:block}
+.detail-top{display:flex;justify-content:center}
+.detail-actions{display:flex;gap:8px;margin:17px 0 10px}
+.detail-actions .primary{flex:1}
+.song-row{display:flex;align-items:center;gap:10px;min-height:57px;border-bottom:1px solid var(--border)}
+.song-row img{width:37px;height:37px;border-radius:4px}
+.song-row button{min-width:0;flex:1;min-height:48px;display:flex;align-items:center;gap:9px;background:none;border:0;color:var(--text);padding:0;text-align:left}
+.song-row strong{display:block;font-size:12px;line-height:1.4;font-weight:500}
+.song-row small{font-size:10px;color:var(--sub)}
+.song-row.current strong{color:var(--accent)}
+.song-row .number{width:17px;font-size:10px;color:var(--sub)}
+.warning{border:1px solid #806c48;background:#3a3428;padding:12px;border-radius:9px;font-size:11px;line-height:1.7;color:#efdbb1;margin-bottom:15px}
+.warning p{margin:0 0 10px}
+.warning .primary{min-height:44px}
+.storage-warning{font-size:10px;color:#efdbb1;line-height:1.5;margin-top:6px}
+.toast{position:absolute;bottom:24px;left:15px;right:15px;background:var(--text);color:var(--bg);border-radius:8px;padding:11px 13px;font-size:11px;z-index:3}
+
+.design-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;border-top:1px solid var(--line);padding-top:19px;margin-top:28px;font-size:12px;line-height:1.7;color:var(--muted)}
+.design-notes h3{font-size:12px;color:var(--ink);margin:0 0 6px}
+.design-notes p{margin:0}
+.footer{font-size:10px;color:var(--muted);line-height:1.7;margin-top:22px;display:flex;justify-content:space-between;gap:20px}
+
+@media(max-width:1100px){.board{padding:22px}
+.studies,.design-notes{gap:18px}
+.label{flex-wrap:wrap;gap:5px}
+.label small{width:100%;margin-left:22px}
+.phone{height:742px}
+.screen{padding-inline:14px}
+.intent{display:none}
+}
+
+@media(max-width:800px){.board{padding:20px}
+.studies{grid-template-columns:minmax(0,380px);justify-content:center;gap:28px}
+.label small{width:auto;margin-left:auto}
+.intro h1{font-size:30px}
+.toolbar{align-items:stretch}
+.toolbar-controls{width:100%}
+.toolbar select{width:100%}
+.design-notes{grid-template-columns:1fr;gap:16px}
+.footer{flex-direction:column;gap:5px}
+.intro{padding-block:20px}
+.intro p{font-size:12px}
+.screen{padding-inline:18px}
+}
+
+@media(max-width:360px){.board{padding:16px 12px}
+.screen{padding-inline:14px}
+.intro h1{font-size:27px}
+.mast .eyebrow{font-size:8px}
+.song-heading h3{font-size:23px}
+.play-controls .icon-button{min-width:44px;width:44px}
+.play-controls .big{width:62px}
+.playlist-cover{width:42px;height:42px}
+.playlist-copy strong{font-size:11px}
+}
+
+@media(prefers-reduced-motion:no-preference){button{transition:background .12s}
+}
+
+
+/* Keep the v2 phone palette and type. This study changes flows, not themes. */
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 380px minmax(220px, 1fr);
+  gap: 46px;
+  align-items: start;
+  margin-top: 26px;
+}
+.journey, .explanation { padding-top: 40px; }
+.journey h2, .explanation h2 {
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -.6px;
+  margin: 11px 0 24px;
+}
+.journey ol { margin: 0; padding-left: 18px; }
+.journey li { margin: 0 0 23px; padding-left: 5px; font-size: 12px; line-height: 1.7; }
+.journey li b { display: block; font-weight: 600; }
+.journey li span { color: var(--muted); }
+.journey-bottom { border-top: 1px solid var(--line); padding-top: 15px; color: var(--muted); font-size: 11px; line-height: 1.8; }
+.explanation p { font-size: 12px; line-height: 1.8; color: var(--muted); }
+.explain-detail { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 17px; }
+.explain-detail h3 { font-size: 11px; font-weight: 650; margin: 0 0 8px; }
+.explain-detail p { margin: 0; }
+.explanation .research-note { font-size: 11px; margin-top: 24px; }
+.device-column { min-width: 0; }
+.phone { width: 100%; height: 772px; }
+.screen { display: flex; flex-direction: column; position: relative; }
+.page-body { flex: 1 0 auto; min-height: 0; }
+.page-actions { margin-top: 20px; padding-bottom: 5px; }
+.page-actions .primary { width: 100%; }
+.page-actions .text-button { justify-content: center; width: 100%; }
+.app-top { flex-shrink: 0; }
+.welcome-mark { display: flex; align-items: center; gap: 5px; height: 48px; margin: 45px 0 35px; color: var(--accent); }
+.welcome-mark i { display: block; width: 6px; height: 24px; background: currentColor; border-radius: 3px; }
+.welcome-mark i:nth-child(2) { height: 48px; }
+.welcome-mark i:nth-child(3) { height: 34px; }
+.welcome-mark i:nth-child(4) { height: 18px; }
+.welcome-title { font-size: 39px; letter-spacing: -1.5px; font-weight: 500; line-height: 1.1; margin: 0 0 20px; }
+.welcome-copy { color: var(--sub); font-size: 13px; line-height: 1.8; margin: 0 0 24px; }
+.benefit { padding: 14px 0; border-top: 1px solid var(--border); }
+.benefit strong { font-size: 12px; font-weight: 600; }
+.benefit p { font-size: 11px; color: var(--sub); line-height: 1.7; margin: 5px 0 0; }
+.demo-note { font-size: 10px; line-height: 1.7; color: var(--sub); margin: 13px 0 0; }
+.demo-note strong { font-weight: 600; color: var(--text); }
+.form-field { margin-bottom: 15px; }
+.form-field label { display: block; font-size: 11px; margin-bottom: 7px; }
+.field-input { width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: 7px; padding: 11px 12px; background: var(--surface); color: var(--text); font-size: 12px; }
+.field-help { display: block; margin-top: 6px; font-size: 10px; color: var(--sub); line-height: 1.6; }
+.password-field { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.password-field .field-input { background: none; border: 0; min-width: 0; }
+.password-field .icon-button { flex-shrink: 0; }
+.password-field input::-ms-reveal,
+.password-field input::-ms-clear { display: none; }
+.inline-error { color: #efb5a3; font-size: 11px; line-height: 1.7; margin: 7px 0; }
+.form-status { font-size: 11px; line-height: 1.7; color: var(--accent); margin: 7px 0; }
+.form-status:empty, .inline-error:empty { display: none; }
+.connect-form fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
+.connect-form .primary { width: 100%; }
+.connected-summary { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 7px 0 18px; }
+.connected-summary svg { color: var(--accent); }
+.connected-summary strong { font-size: 12px; display: block; }
+.connected-summary small { color: var(--sub); font-size: 10px; display: block; line-height: 1.6; margin-top: 3px; overflow-wrap: anywhere; }
+.library-choice { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); min-height: 70px; cursor: pointer; }
+.library-choice input { width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0; }
+.library-choice > span { flex: 1; min-width: 0; }
+.library-choice strong { display: block; font-weight: 600; font-size: 12px; }
+.library-choice small { display: block; color: var(--sub); font-size: 10px; line-height: 1.6; margin-top: 4px; }
+.library-choice .badge { font-size: 8px; }
+.disclosure { border-block: 1px solid var(--border); margin-top: 18px; }
+.disclosure summary { min-height: 44px; display: flex; align-items: center; font-size: 11px; cursor: pointer; }
+.disclosure p { font-size: 10px; color: var(--sub); line-height: 1.8; margin: 0 0 14px; }
+.library-count { color: var(--sub); font-size: 10px; margin: 12px 0 0; }
+.empty-card { background: var(--surface); border: 1px solid var(--border); padding: 17px; border-radius: 8px; font-size: 12px; line-height: 1.8; }
+.empty-card p { margin: 7px 0 15px; color: var(--sub); font-size: 11px; }
+.ready-check { width: 52px; height: 52px; border-radius: 50%; color: var(--accent); border: 1px solid var(--border); display: grid; place-items: center; margin: 30px 0 22px; }
+.summary-row { padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 11px; display: flex; justify-content: space-between; gap: 12px; line-height: 1.7; }
+.summary-row span { color: var(--sub); }
+.summary-row strong { font-weight: 500; text-align: right; max-width: 65%; overflow-wrap: anywhere; }
+.connection-row { display: flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 11px; margin-bottom: 9px; min-height: 70px; }
+.connection-copy { flex: 1; min-width: 0; }
+.connection-copy strong { display: block; font-size: 12px; font-weight: 600; }
+.connection-copy small { display: block; font-size: 10px; line-height: 1.6; margin-top: 3px; color: var(--sub); overflow-wrap: anywhere; }
+.connection-row .text-button { font-size: 10px; color: var(--accent); }
+.active-connection { border-color: #65785c; }
+.settings-section { border-top: 1px solid var(--border); margin-top: 17px; padding-top: 17px; }
+.settings-section h4 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
+.settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.settings-actions .primary { min-height: 44px; padding-inline: 12px; font-size: 11px; }
+.danger { color: #efb5a3; border-color: #6c4e44; }
+.settings-bottom { display: flex; justify-content: space-between; gap: 9px; }
+.settings-bottom .text-button { font-size: 10px; }
+.player-art { width: 58%; margin: 0 auto 13px; }
+.song-heading h3 { font-size: 25px; }
+.rating-block { margin-top: 10px; }
+.rating-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--sub); }
+.rating-options { display: flex; gap: 1px; align-items: center; }
+.star-button { color: #89958a; }
+.star-button.selected { color: var(--accent); }
+.star-button.selected svg { fill: currentColor; }
+.star-button svg { width: 23px; height: 23px; }
+.rating-control { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.clear-rating { font-size: 10px; }
+.rating-status { font-size: 10px; min-height: 17px; line-height: 1.6; color: var(--sub); }
+.rating-status.error { color: #efb5a3; }
+.rating-retry { padding-left: 5px; }
+.seek { margin-top: 4px; }
+.play-controls { margin: 6px 0 12px; }
+.player-top .context strong { font-size: 12px; }
+.player-top .context small { margin-top: 2px; font-size: 9px; }
+.rating-error-line { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.alert-box { background: #3b3429; color: #ecd7b4; border: 1px solid #776547; border-radius: 8px; padding: 13px; font-size: 11px; line-height: 1.8; margin: 10px 0 17px; }
+.alert-box p { margin: 0; }
+.player-mode .screen { display: block; }
+.mini { min-height: 57px; }
+.no-access { padding-block: 10px; }
+@media(max-width:1150px) {
+  .workbench { grid-template-columns: 380px minmax(220px, 1fr); gap: 30px; justify-content: center; }
+  .journey { display: none; }
+}
+@media(max-width:800px) {
+  .workbench { grid-template-columns: minmax(0, 380px); gap: 24px; justify-content: center; }
+  .explanation { padding-top: 0; }
+  .explanation h2 { margin-bottom: 12px; }
+  .device-column .label small { font-size: 9px; }
+  .toolbar-controls { display: grid; grid-template-columns: 1fr 1fr; }
+  #preview-screen, #preview-outcome { grid-column: 1 / -1; }
+  .prototype-note { font-size: 10px; line-height: 1.7; }
+}
+@media(max-width:360px) {
+  .welcome-title { font-size: 34px; }
+  .rating-options { gap: 0; }
+  .rating-control { gap: 0; }
+  .star-button { width: 44px; min-width: 44px; }
+  .clear-rating { min-width: 44px; padding: 0; font-size: 9px; }
+  .device .screen { padding-inline: 14px; }
+  .player-art { width: 58%; }
+}
+
+/* V5: improve readability without changing the calibrated device size. */
+.device { font-size: 18px; }
+.device .screen { padding: 14px 18px 18px; }
+.device .hint, .device .welcome-copy { font-size: 18px; line-height: 1.55; }
+.device .demo-note, .device .field-help, .device .disclosure p { font-size: 15px; line-height: 1.5; }
+.device .kicker { font-size: 14px; letter-spacing: 1px; }
+.device .context strong { font-size: 20px; line-height: 1.3; white-space: normal; }
+.device .app-top { gap: 9px; margin-bottom: 16px; min-height: 56px; }
+.device .picker-heading { font-size: 30px; line-height: 1.2; }
+.device .primary { font-size: 18px; min-height: 56px; padding: 10px 14px; line-height: 1.3; }
+.device .text-button { font-size: 16px; min-height: 52px; }
+.device .icon-button { min-width: 52px; width: 52px; height: 52px; }
+.device .icon-button > svg { width: 25px; height: 25px; }
+.device .form-field label { font-size: 18px; margin-bottom: 8px; }
+.device .field-input { font-size: 18px; min-height: 54px; }
+.device .form-field { margin-bottom: 17px; }
+.device .inline-error, .device .form-status { font-size: 16px; line-height: 1.5; }
+.device .welcome-title { font-size: 43px; }
+.device .welcome-mark { margin: 28px 0; }
+.device .benefit strong { font-size: 20px; }
+.device .benefit p { font-size: 17px; line-height: 1.5; }
+.device .connected-summary strong { font-size: 20px; }
+.device .connected-summary small { font-size: 16px; line-height: 1.5; }
+.device .library-choice { min-height: 86px; }
+.device .library-choice strong { font-size: 20px; }
+.device .library-choice small { font-size: 16px; line-height: 1.4; }
+.device .library-choice input { width: 26px; height: 26px; }
+.device .library-count { font-size: 16px; }
+.device .disclosure summary { font-size: 17px; min-height: 56px; }
+.device .summary-row { font-size: 17px; line-height: 1.5; }
+.device .badge { font-size: 12px; }
+.device .section-label { font-size: 15px; }
+.device .playlist-row { gap: 10px; min-height: 100px; padding-block: 12px; }
+.device .playlist-cover { width: 58px; height: 58px; }
+.device .playlist-copy strong { font-size: 20px; line-height: 1.25; }
+.device .playlist-copy small { font-size: 15px; line-height: 1.4; }
+.device .row-action span { font-size: 12px; }
+.device .playlist-row .quick-start { width: 56px; height: 56px; min-width: 56px; }
+.device .search { min-height: 56px; }
+.device .search input { font-size: 18px; height: 54px; }
+.device .connection-copy strong { font-size: 20px; }
+.device .connection-copy small { font-size: 16px; line-height: 1.5; }
+.device .connection-row { padding: 13px 11px; }
+.device .connection-row .text-button { font-size: 16px; }
+.device .settings-section h4 { font-size: 22px; }
+.device .settings-actions .primary { font-size: 17px; min-height: 54px; }
+.device .settings-bottom { flex-wrap: wrap; }
+.device .settings-bottom .text-button { font-size: 16px; }
+.device .song-row { min-height: 76px; }
+.device .song-row button { min-height: 64px; }
+.device .song-row strong { font-size: 19px; }
+.device .song-row small { font-size: 15px; }
+.device .song-row .number { font-size: 15px; }
+.device .song-row img { width: 46px; height: 46px; }
+.device .mini { min-height: 74px; }
+.device .mini strong { font-size: 18px; }
+.device .mini small { font-size: 14px; }
+.device .mini img { width: 52px; height: 52px; }
+.device .mini-open { min-height: 56px; }
+.device .empty-card, .device .empty-card p, .device .empty, .device .alert-box { font-size: 17px; line-height: 1.5; }
+
+/* Seven purposeful rows fill the player; artwork flexes, the footer stays low. */
+.device.player-mode .screen {
+  display: grid;
+  grid-template-rows: auto minmax(120px, 1fr) auto auto auto auto auto;
+  gap: 12px;
+  overflow: hidden;
+}
+.device .player-top { margin: 0; min-height: 52px; }
+.device .player-top .context strong { font-size: 20px; }
+.device .player-top .context small { display: none; }
+.player-visual { min-height: 0; display: flex; align-items: center; justify-content: center; }
+.device .player-visual .player-art { width: auto; height: 100%; max-width: 100%; aspect-ratio: 1; margin: 0; border-radius: 10px; object-fit: contain; }
+.device .player-song { margin: 0; min-height: 64px; align-items: center; gap: 14px; }
+.device .player-song > div { flex: 1; min-width: 0; }
+.device .player-song h3 { font-size: 32px; line-height: 1.15; margin-bottom: 8px; overflow-wrap: anywhere; }
+.device .player-song p { font-size: 20px; line-height: 1.3; }
+.device .rating-trigger { width: 60px; min-width: 60px; height: 64px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.rating-trigger svg { width: 27px; height: 27px; }
+.rating-trigger.rated svg { fill: currentColor; }
+.rating-trigger span { font-size: 16px; line-height: 1.2; }
+.player-seek .seek { width: 100%; height: 44px; margin: 0; }
+.device .player-seek .times { font-size: 16px; }
+.device .play-controls { margin: 0; min-height: 76px; }
+.device .play-controls .big { width: 82px; min-width: 82px; height: 76px; border-radius: 26px; }
+.device .play-controls .big svg { width: 34px; height: 34px; }
+.device .change-playlist { min-height: 66px; padding: 10px 13px; }
+.device .change-playlist strong { font-size: 20px; }
+.device .change-playlist small { font-size: 15px; margin-top: 4px; }
+.device .secondary-row { margin: 0; min-height: 48px; }
+.device .source-note { font-size: 13px; letter-spacing: .3px; }
+
+/* A real modal inside the phone, with large separate targets and a clear way out. */
+.rating-dialog { width: calc(100% - 32px); max-width: 370px; max-height: calc(100% - 40px); margin: auto; padding: 20px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 18px 60px #0008; overflow: auto; }
+.rating-dialog::backdrop { background: #080d0ab8; }
+.rating-dialog h3 { margin: 0 0 7px; font-size: 28px; line-height: 1.2; letter-spacing: -.5px; }
+.rating-song { font-size: 20px; font-weight: 600; margin: 0 0 6px; overflow-wrap: anywhere; }
+.rating-artist { font-size: 17px; line-height: 1.4; color: var(--sub); margin: 0 0 19px; }
+.rating-value { font-size: 16px; color: var(--sub); margin: 0 0 10px; }
+.rating-choices { display: flex; justify-content: space-between; gap: 5px; margin: 12px 0 16px; }
+.device .rating-choice { min-width: 56px; width: 56px; height: 80px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--sub); display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
+.rating-choice svg { width: 32px; height: 32px; }
+.rating-choice span { font-size: 18px; }
+.rating-choice.filled { color: var(--accent); }
+.rating-choice.filled svg { fill: currentColor; }
+.rating-choice[aria-checked=true] { border-color: var(--accent); }
+.rating-dialog .rating-status { font-size: 16px; min-height: 24px; line-height: 1.5; display: block; }
+.rating-dialog .rating-error-line { align-items: start; }
+.rating-dialog .rating-help { font-size: 15px; color: var(--sub); line-height: 1.5; margin: 14px 0; }
+.rating-dialog-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px; }
+.rating-dialog-actions .primary { min-width: 112px; }
+@media(max-width:360px) {
+  .device .screen { padding-inline: 14px; }
+  .device .player-song h3 { font-size: 29px; }
+  .device .play-controls .icon-button { width: 48px; min-width: 48px; }
+  .device .play-controls .big { width: 70px; min-width: 70px; }
+  .rating-dialog { padding: 16px; width: calc(100% - 24px); }
+  .rating-choices { gap: 0; }
+  .device .rating-choice { width: 48px; min-width: 48px; height: 76px; }
+  .device .playlist-copy strong { font-size: 18px; }
+  .device .playlist-cover { width: 48px; height: 48px; }
+  .device .playlist-info { gap: 8px; }
+  .device .row-action .quick-start { width: 52px; min-width: 52px; }
+}
+
+</style>
+</head>
+<body>
+<main class="board">
+  <header class="mast">
+    <div class="brand">audio</div>
+    <span class="eyebrow">Android / First-install study 003</span>
+  </header>
+  <section class="intro">
+    <div>
+      <span class="eyebrow">Connect once. Get back to listening.</span>
+      <h1>The first five minutes.</h1>
+      <p>A guided start, a clear home for your server and libraries, and song ratings in the player.<br>The playlist-first listening flow stays the same. Themes can wait.</p>
+    </div>
+    <div class="intent"><b>Interactive design prototype</b><br>Dummy values only. No sign-in, music playback, or rating is sent to a real server.</div>
+  </section>
+  <div class="toolbar">
+    <div class="toolbar-controls">
+      <select id="preview-screen" aria-label="Preview screen">
+        <option value="welcome">01 · Fresh install</option>
+        <option value="connect">02 · Connect to Navidrome</option>
+        <option value="libraries">03 · Choose libraries</option>
+        <option value="ready">04 · Ready to listen</option>
+        <option value="playlists">05 · Choose a playlist</option>
+        <option value="player">06 · Player & five-star rating</option>
+        <option value="settings">07 · Server & library management</option>
+        <option value="queue">08 · Saved listening queue</option>
+      </select>
+      <select id="preview-outcome" aria-label="Simulated server outcome">
+        <option value="success">Preview · success</option>
+        <option value="auth">Preview · wrong password</option>
+        <option value="network">Preview · server unreachable</option>
+        <option value="no-libraries">Preview · no library access</option>
+        <option value="rating-error">Preview · rating save fails</option>
+        <option value="offline">Preview · offline</option>
+      </select>
+      <button class="board-button" id="reopen">Reopen app</button>
+      <button class="board-button" id="reset">Restart first-install demo</button>
+    </div>
+    <span class="prototype-note" id="storage-note">Only fictional demo state is saved in this browser. Never enter real credentials.</span>
+  </div>
+  <section class="workbench">
+    <aside class="journey" aria-label="Experience outline">
+      <span class="eyebrow">The experience</span>
+      <h2>Setup is a short detour.</h2>
+      <ol>
+        <li><b>Make the first step obvious.</b><span>Connect your existing Navidrome account. No new Audio account.</span></li>
+        <li><b>Choose what you browse.</b><span>Use the libraries your server account can already access.</span></li>
+        <li><b>Start your usual playlist.</b><span>One shuffle action opens the full player.</span></li>
+        <li><b>Then get out of the way.</b><span>Next launch restores your listening session.</span></li>
+      </ol>
+      <div class="journey-bottom">One provisional theme.<br>No extra album-first home screen.</div>
+    </aside>
+    <div class="device-column">
+      <div class="label"><span class="step" id="screen-number">01</span><h2 id="screen-label">Fresh install</h2><small>Interactive phone</small></div>
+      <div class="phone"><section class="device" aria-label="Audio first-install prototype"></section></div>
+    </div>
+    <aside class="explanation" aria-live="polite">
+      <span class="eyebrow">What this screen does</span>
+      <h2 id="explain-title"></h2>
+      <p id="explain-copy"></p>
+      <div class="explain-detail"><h3>Design decision</h3><p id="explain-decision"></p></div>
+      <div class="explain-detail"><h3>Try it</h3><p id="explain-try"></p></div>
+      <p class="research-note">Library selection is not server administration. Five-star ratings are separate from Navidrome’s single favorite star. Both distinctions are reflected in the flow.</p>
+    </aside>
+  </section>
+  <footer class="footer"><span>DESIGN PREVIEW · All accounts, libraries, playlists, songs, and saved outcomes are fictional.<br>Screen shortcuts seed sample setup where needed. Reset starts from a genuine empty demo.</span><span>v1 and v2 are preserved.<br>Browser tests do not establish Android or Navidrome integration.</span></footer>
+</main>
+<script>
+'use strict';
+(() => {
+const icons = {
+ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+ library:'<path d="M4 5v15M9 5v15M14 4l6 15M3 3h7"/>',
+ home:'<path d="m3 10 9-7 9 7v10H4V10M9 20v-7h6v7"/>',
+ download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+ settings:'<path d="m9 3-1 3-3 1-2 4 2 3v4l4 2 3-1 3 1 4-2v-4l2-3-2-4-3-1-1-3z"/><circle cx="12" cy="12" r="3"/>',
+ play:'<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+ pause:'<path d="M8 5v14M16 5v14" stroke-width="4"/>',
+ next:'<path d="m5 5 10 7-10 7Z" fill="currentColor" stroke="none"/><path d="M19 5v14"/>',
+ previous:'<path d="m19 5-10 7 10 7Z" fill="currentColor" stroke="none"/><path d="M5 5v14"/>',
+ heart:'<path d="M20 5c-3-3-7 0-8 2-1-2-5-5-8-2-4 4 1 9 8 15 7-6 12-11 8-15Z"/>',
+ back:'<path d="m14 5-7 7 7 7"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ shuffle:'<path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 3-2 4-4m4-4c1-2 2-4 4-4h3m-4-4 4 4-4 4"/>',
+ repeat:'<path d="M4 10V7h15m-3-3 3 3-3 3M20 14v3H5m3 3-3-3 3-3"/>',
+ queue:'<path d="M3 5h17M3 10h17M3 15h10m4-1 4 3-4 3Z"/>',
+ check:'<path d="m5 12 4 4L20 5"/>',
+ wifi:'<path d="M3 8c5-4 13-4 18 0M6 12c4-3 8-3 12 0m-9 4c2-2 4-2 6 0"/><circle cx="12" cy="20" r=".7"/>',
+ battery:'<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M6 10h9v4H6Z" fill="currentColor"/>',
+ signal:'<path d="M5 19v-3m5 3v-7m5 7V8m5 11V4"/>'
+};
+const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.library}</svg>`;
+const esc = (str) => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const albums = [
+ {title:'The Quiet Earth',artist:'Alder & Ash',year:'2025',color:'#344b37',accent:'#d5dfb5',design:'earth',tracks:['A clearing','Slow light','The quiet earth','Everything returns','Between the pines','Stay a little longer']},
+ {title:'Blue Hours',artist:'June Marlow',year:'2024',color:'#273f58',accent:'#f5a388',design:'blue',tracks:['Last train home','Blue hours','Room with a view','Almost morning','A little further','Paper moon']},
+ {title:'Soft Focus',artist:'Low Season',year:'2025',color:'#a74c32',accent:'#f0ca93',design:'soft',tracks:['An open window','Soft focus','In the middle','Falling into place','Warm water','Half asleep']},
+ {title:'Tidal Memory',artist:'Coastline',year:'2023',color:'#4f7673',accent:'#dbdac1',design:'tide',tracks:['Salt air','Tidal memory','Offshore','Weightless','Still here','The way back']},
+ {title:'Small Worlds',artist:'The Satellites',year:'2024',color:'#917937',accent:'#f7e6ad',design:'worlds',tracks:['Near enough','Small worlds','Here and there','Orbit','Sunday people','Home again']},
+ {title:'After the Rain',artist:'Mira Sol',year:'2025',color:'#676b60',accent:'#f3d8bb',design:'rain',tracks:['First light','After the rain','Two rivers','Passing through','A softer place','The garden']}
+];
+function cover(album){
+ let graphic='';
+ if(album.design==='earth') graphic='<path d="M-30 325 140 85 310 325Z" fill="#152b22"/><path d="m130 325 156-190 143 190Z" fill="#60745c"/><circle cx="300" cy="77" r="32" fill="#d9deb0"/><path d="M0 299q190-60 400-5v106H0Z" fill="#aab39c"/>';
+ if(album.design==='blue') graphic='<path d="M65 0h270v400H65Z" fill="#7595a4"/><path d="M85 0h230v400H85Z" fill="#142a43"/><circle cx="200" cy="165" r="91" fill="#eea98f"/><path d="M85 196h230v204H85Z" fill="#243e56"/><path d="M85 220h230m-230 20h230m-230 25h230m-230 30h230" stroke="#708fa3" stroke-width="2"/>';
+ if(album.design==='soft') graphic='<circle cx="200" cy="200" r="140" fill="#e8b385"/><circle cx="200" cy="200" r="100" fill="#bd6549"/><circle cx="200" cy="200" r="63" fill="#f4ce9f"/><circle cx="200" cy="200" r="26" fill="#9c4734"/>';
+ if(album.design==='tide') graphic='<path d="M0 130q100-75 200 0t200 0v270H0Z" fill="#c5cbb6"/><path d="M0 180q100-75 200 0t200 0v220H0Z" fill="#74928a"/><path d="M0 230q100-75 200 0t200 0v170H0Z" fill="#294c4a"/><path d="M0 280q100-75 200 0t200 0v120H0Z" fill="#9eb5a6"/>';
+ if(album.design==='worlds') graphic='<circle cx="200" cy="200" r="130" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="85" fill="none" stroke="#f7e6ad" stroke-width="1"/><circle cx="200" cy="200" r="30" fill="#f7e6ad"/><circle cx="290" cy="108" r="17" fill="#332f25"/><circle cx="126" cy="238" r="11" fill="#f7e6ad"/>';
+ if(album.design==='rain') graphic='<path d="M80 300V90m55 210V60m55 240V30m55 270V80m55 220V120" stroke="#adb6a1" stroke-width="15"/><circle cx="280" cy="100" r="48" fill="#efccad"/><path d="M0 300q200-70 400 0v100H0Z" fill="#3a4b40"/>';
+ const text=album.design==='soft'?'SOFT / FOCUS':album.title.toUpperCase();
+ const xml=`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="${album.color}"/>${graphic}<text x="22" y="33" font-family="Arial,sans-serif" font-size="11" letter-spacing="3" fill="${album.accent}">${album.artist.toUpperCase().replace('&','&amp;')}</text><rect y="333" width="400" height="67" fill="${album.color}"/><text x="22" y="373" font-family="Georgia,serif" font-size="27" fill="${album.accent}">${text}</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);
+}
+albums.forEach(a=>a.art=cover(a));
+
+const playlists = [
+  {id:'long-way',name:'The long way home',description:'Familiar favorites for the drive.',albums:[0,1,3,5],songs:[[0,1],[1,0],[3,4],[5,0],[0,3],[1,3],[3,0],[5,2],[0,0],[1,5],[3,2],[5,4]]},
+  {id:'daily',name:'Daily rotation',description:'The songs you keep coming back to.',albums:[2,4,1,0],songs:[[2,0],[4,1],[1,2],[0,4],[2,3],[4,4],[1,4],[0,5]]},
+  {id:'quiet',name:'A quieter kind of evening',description:'Less noise. A little more space.',albums:[5,0,3,2],songs:[[5,3],[0,2],[3,1],[2,5],[5,5],[0,1],[3,5],[2,2]]},
+  {id:'weekend',name:'Weekend windows down',description:'A good reason to take the scenic route.',albums:[4,2,1,3],songs:[[4,0],[2,1],[1,1],[3,3],[4,3],[2,4],[1,0],[3,0]]},
+  {id:'focus',name:'Deep focus',description:'A steady backdrop for getting into it.',albums:[3,5,0,4],songs:[[3,2],[5,1],[0,0],[4,2],[3,4],[5,4],[0,3],[4,5]]}
+];
+
+icons.star = '<path d="m12 3 2.8 5.7 6.3.9-4.5 4.4 1 6.2-5.6-3-5.6 3 1-6.2L1.9 9.6l6.3-.9Z"/>';
+icons.eye = '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>';
+delete icons.heart;
+const icon = name => svg(name);
+const device = document.querySelector('.device');
+const storeKey = 'audio-first-install-v5';
+const librarySamples = [
+  { id: 'music', name: 'Music', detail: 'Your main music collection' },
+  { id: 'lossless', name: 'Lossless', detail: 'High-quality albums and recordings' },
+  { id: 'books', name: 'Audiobooks', detail: 'Spoken-word collection' },
+];
+const descriptions = {
+  welcome: ['01', 'Fresh install', 'An obvious place to start.', 'No empty library and no unexplained player. The first screen says what the app needs and gives one primary action: connect your server.', 'There is no separate Audio account. Navidrome remains the source of your music, playlists, and personal ratings.', 'Tap Connect to Navidrome, then use the dummy values in the connection form.'],
+  connect: ['02', 'Connect to Navidrome', 'Use the account you already have.', 'Enter the server’s base address, your Navidrome username, and password. Testing the connection also discovers the libraries that account can access.', 'This is a simulated username/password flow, not a made-up OAuth provider. No password is stored in this prototype.', 'Fill demo values. The Preview outcome menu lets you try an incorrect password or an unreachable server.'],
+  libraries: ['03', 'Choose libraries', 'Choose your browsing scope.', 'These are libraries returned for the signed-in account. Select which to browse here; this does not create folders, grant permission, or delete anything.', 'Playlists can span accessible libraries. A browsing preference must not silently rewrite a playlist or replace the current queue.', 'Uncheck a library, try selecting none, then save. Open the disclosure to see how playlists are handled.'],
+  ready: ['04', 'Ready to listen', 'Setup ends before the music begins.', 'Review the connection and library choice, then go directly to playlists. There is no empty recent-session player on a first install.', 'Connection and library discovery are separate from fetching playlists. The short loading states in this prototype are visibly simulated.', 'Choose a playlist, tap its shuffle control, and land in the full player.'],
+  playlists: ['05', 'Choose a playlist', 'Choose the thing you came to hear.', 'Your playlists appear before album browsing. Once you have listened, recent playlists get priority. A shuffle action opens the full player immediately.', 'This screen is not restricted to songs in your browse-only selection. Cross-library playlists stay intact within your account permissions.', 'Start a playlist, then use Reopen app to restore that listening session. The gear opens server and library settings.'],
+  player: ['06', 'Player & song rating', 'Five stars, not a favorite heart.', 'Rate the current song from one to five stars, or clear its rating. The value belongs to this song and Navidrome account, not the playlist or album.', 'The five-star rating is distinct from Navidrome’s binary favorite. A failed save keeps the previous confirmed value and offers Retry.', 'Set four stars. Try a rating-save failure or offline state, then retry. Change tracks to confirm each song keeps its own rating.'],
+  settings: ['07', 'Server & library management', 'A clear home for connections.', 'Choose a saved server, add another, change the libraries you browse, or refresh the library list. Your listening session is kept separately for each connection.', 'Creating libraries, assigning folder paths, and changing user access belong in Navidrome’s web administration. Removing a connection affects this device only.', 'Change libraries and cancel to preserve the old selection. Add a second demo server, switch back, or inspect the remove confirmation.'],
+  queue: ['08', 'Saved listening queue', 'Your place is part of the session.', 'The shuffled order, current song, and position survive a cold launch in the browser demo. Returning to a playlist does not automatically create a fresh shuffle.', 'Changing the browsing library selection does not erase the saved queue.', 'Tap a song to jump within the queue, or return to the player.'],
+  admin: ['07', 'Navidrome administration', 'Keep server administration on the server.', 'In the real client, this action would open the connected server in a browser. This prototype explains the handoff instead of navigating away.', 'Library paths, scans, and access permissions are server concerns. The regular account may need an administrator’s help.', 'Go back to settings without changing your library selection.'],
+  remove: ['07', 'Remove connection', 'Remove access here, not the music.', 'The confirmation names the exact connection and makes the scope explicit. Server music, playlists, ratings, and accounts are not deleted.', 'Cancel is the safe initial choice; Escape also cancels. This mockup only removes fictional local connection state.', 'Cancel first. Then try removing the connection to inspect the resulting state.'],
+};
+const blank = () => ({ connections: [], active: null, ratings: {} });
+let model = blank();
+let storageOK = true;
+try {
+  const saved = JSON.parse(localStorage.getItem(storeKey));
+  if (saved && Array.isArray(saved.connections) && saved.ratings && saved.connections.every(c => c.id && Array.isArray(c.libraries) && Array.isArray(c.selected))) model = saved;
+} catch { storageOK = false; }
+let screen = 'welcome';
+let playing = false;
+let query = '';
+let libraryDraft = [];
+let libraryMode = 'setup';
+let connecting = false;
+let loading = false;
+let connectError = '';
+let libraryError = '';
+let feedback = '';
+let editId = null;
+let removeId = null;
+let generation = 0;
+const ratingJobs = new Map();
+function invalidateAsync() {
+  generation += 1;
+  for (const [key, job] of ratingJobs) if (job.pending) ratingJobs.delete(key);
+}
+function active() { return model.connections.find(c => c.id === model.active); }
+function persist() {
+  try { localStorage.setItem(storeKey, JSON.stringify(model)); }
+  catch { storageOK = false; }
+  if (!storageOK) document.querySelector('#storage-note').textContent = 'Browser storage unavailable. Reopen simulation works; reload may not remember. No credentials are stored.';
+}
+function outcome() { return document.querySelector('#preview-outcome').value; }
+function button(name, label, action, extra = '') {
+  return `<button class="icon-button ${extra}" data-action="${action}" aria-label="${esc(label)}" title="${esc(label)}">${icon(name)}</button>`;
+}
+function header(title, label, back = 'back', settings = false) {
+  return `<div class="app-top">${button('back', 'Back', back)}<div class="context"><span class="kicker">${label}</span><strong>${esc(title)}</strong></div>${settings ? button('settings', 'Server and libraries', 'settings') : ''}</div>`;
+}
+function goto(next) {
+  screen = next;
+  feedback = '';
+  render();
+}
+function demoConnection(id = 'home', name = 'Home music', account = 'demo-listener', url = 'https://music.example.com') {
+  return { id, name, account, url, libraries: librarySamples.map(l => ({ ...l })), selected: ['music', 'lossless'], session: null, recents: [] };
+}
+function seedConnection() {
+  if (!active()) {
+    const c = demoConnection();
+    model.connections.push(c);
+    model.active = c.id;
+  }
+  return active();
+}
+function makeSession(playlist = 'long-way') {
+  const p = playlists.find(p => p.id === playlist) || playlists[0];
+  const order = p.songs.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return { playlist: p.id, order, index: 0, position: 0, shuffle: true, repeat: false };
+}
+function currentSong(connection = active()) {
+  if (!connection?.session) return null;
+  const session = connection.session;
+  const p = playlists.find(p => p.id === session.playlist);
+  if (!p) return null;
+  const pair = p.songs[session.order[session.index]];
+  if (!pair) return null;
+  const [ai, ti] = pair;
+  return { ai, ti, title: albums[ai].tracks[ti], album: albums[ai], playlist: p, key: `${connection.id}:${ai}:${ti}` };
+}
+function time(n) { return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; }
+function mosaic(p) {
+  return `<span class="playlist-cover" aria-hidden="true">${p.albums.map(i => `<img src="${albums[i].art}" alt="">`).join('')}</span>`;
+}
+function welcomePage() {
+  return `<div class="page-body">
+    <span class="kicker">Welcome to audio</span>
+    <div class="welcome-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <h3 class="welcome-title">Your music.<br>Right where<br>you left it.</h3>
+    <p class="welcome-copy">A personal player for the music on your Navidrome server.</p>
+    <div class="benefit"><strong>Bring your playlists</strong><p>Choose your usual rotation. Shuffle once and start listening.</p></div>
+    <div class="benefit"><strong>Keep your place</strong><p>Next time, open right to the player and continue your session.</p></div>
+  </div><div class="page-actions"><button class="primary" data-action="connect">Connect to Navidrome</button>
+    <p class="demo-note">Already have Navidrome? Use your existing account.<br><strong>Preview only: use dummy credentials.</strong></p></div>`;
+}
+function connectPage() {
+  const c = editId && model.connections.find(c => c.id === editId);
+  return `${header(c ? 'Reconnect' : 'Connect your server', 'Navidrome account', 'cancel-connect')}
+    <div class="page-body">
+      <p class="hint">Use your Navidrome account. You don’t need to create an Audio account.</p>
+      <form class="connect-form" novalidate>
+        <fieldset ${connecting ? 'disabled' : ''}>
+          <div class="form-field"><label for="server-name">Connection name</label><input class="field-input" id="server-name" name="label" value="${esc(c?.name || '')}" placeholder="Home music" autocomplete="off"></div>
+          <div class="form-field"><label for="server-url">Server address</label><input class="field-input" id="server-url" name="url" value="${esc(c?.url || '')}" placeholder="https://music.example.com" type="url" autocomplete="off" inputmode="url" aria-describedby="url-help url-error"><small class="field-help" id="url-help">Use the server’s base address, including a subpath if needed.</small><div class="inline-error" id="url-error"></div></div>
+          <div class="form-field"><label for="server-user">Username</label><input class="field-input" id="server-user" name="username" value="${esc(c?.account || '')}" placeholder="demo-listener" autocomplete="off"></div>
+          <div class="form-field"><label for="server-password">Password</label><div class="password-field"><input class="field-input" id="server-password" name="password" type="password" placeholder="Use any dummy password" autocomplete="off"><button type="button" class="icon-button" data-action="show-password" aria-label="Show password">${icon('eye')}</button></div></div>
+          <div class="inline-error" id="auth-error" role="alert">${esc(connectError)}</div>
+          <button class="primary" type="submit">${connecting ? 'Checking connection…' : 'Connect & discover libraries'}</button>
+        </fieldset>
+        <div class="form-status" role="status">${connecting ? 'Simulated sign-in and library discovery. Nothing is sent.' : ''}</div>
+      </form>
+      <p class="demo-note"><strong>Dummy values only.</strong> No password is sent, logged, or saved by this prototype. The real app would need secure device storage.</p>
+    </div>`;
+}
+function libraryChoices(c) {
+  return c.libraries.map(l => `<label class="library-choice"><input type="checkbox" value="${l.id}" ${libraryDraft.includes(l.id) ? 'checked' : ''}><span><strong>${esc(l.name)}</strong><small>${esc(l.detail)}</small></span></label>`).join('');
+}
+function librariesPage() {
+  const c = active();
+  return `${header('Choose libraries', libraryMode === 'setup' ? 'Setup / 2 of 2' : 'Browsing preferences', libraryMode === 'setup' ? 'settings' : 'cancel-libraries')}
+    <div class="page-body">
+      <div class="connected-summary">${icon('check')}<span><strong>${esc(c.name)}</strong><small>${esc(c.account)} · Signed in (simulated)</small></span></div>
+      <h3 class="picker-heading">What do you want to browse?</h3>
+      <p class="hint">Libraries this account can access on your server. Choose one or more. You can change this later.</p>
+      ${c.libraries.length ? `<div class="library-options">${libraryChoices(c)}</div><p class="library-count">${libraryDraft.length} of ${c.libraries.length} selected</p>` : `<div class="empty-card no-access"><strong>No libraries available to this account.</strong><p>Ask your Navidrome administrator to grant access, then refresh. You don’t need to reconnect the whole app.</p><button class="primary secondary" data-action="refresh-access">Refresh access</button></div>`}
+      <div class="inline-error" role="alert">${esc(libraryError)}</div>
+      <details class="disclosure"><summary>What happens to playlists?</summary><p>This preference controls library browsing, not access permissions. Playlists may contain songs from several libraries you can access. We keep those playlists and your existing queue intact rather than silently removing songs.</p></details>
+      <p class="demo-note">Missing a library? Its creation and user access are managed in Navidrome, not here.</p>
+    </div><div class="page-actions"><button class="primary" data-action="save-libraries" ${!libraryDraft.length ? 'disabled' : ''}>${libraryMode === 'setup' ? 'Continue' : 'Save library selection'}</button>${libraryMode === 'manage' ? '<button class="text-button" data-action="cancel-libraries">Cancel</button>' : ''}</div>`;
+}
+function readyPage() {
+  const c = active();
+  return `${header('You’re connected', 'Setup complete', 'libraries')}
+    <div class="page-body"><div class="ready-check">${icon('check')}</div>
+    <h3 class="picker-heading">Let’s find your<br>first playlist.</h3><p class="hint">No listening history yet. Once you start, the next launch will remember your place.</p>
+    <div class="summary-row"><span>Server</span><strong>${esc(c.name)}</strong></div>
+    <div class="summary-row"><span>Account</span><strong>${esc(c.account)}</strong></div>
+    <div class="summary-row"><span>Browse libraries</span><strong>${esc(c.libraries.filter(l => c.selected.includes(l.id)).map(l => l.name).join(', '))}</strong></div>
+    <p class="demo-note">Sign-in and discovery are simulated. Your playlists have not been loaded yet.</p></div>
+    <div class="page-actions"><button class="primary" data-action="load-playlists" ${loading ? 'disabled' : ''}>${loading ? 'Loading playlists…' : 'Choose a playlist'}</button><p class="form-status" role="status">${loading ? 'Loading sample playlists. No request is sent.' : ''}</p></div>`;
+}
+function playlistResults() {
+  const c = active();
+  const found = playlists.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+  if (!found.length) return '<div class="empty" role="status">No playlists match. Try another name.</div>';
+  const recent = c.recents.map(id => found.find(p => p.id === id)).filter(Boolean);
+  const rest = found.filter(p => !recent.includes(p));
+  function rows(items) { return items.map(p => `<div class="playlist-row"><button class="playlist-info" data-playlist="${p.id}" aria-label="View ${esc(p.name)}">${mosaic(p)}<span class="playlist-copy"><strong>${esc(p.name)}</strong><small>${p.songs.length} sample songs · mixed libraries</small></span></button><div class="row-action"><button class="quick-start" data-start="${p.id}" aria-label="${c.session?.playlist === p.id ? 'Resume' : 'Shuffle and play'} ${esc(p.name)}">${icon(c.session?.playlist === p.id ? 'play' : 'shuffle')}</button><span>${c.session?.playlist === p.id ? 'Resume' : 'Shuffle'}</span></div></div>`).join(''); }
+  return `${recent.length ? '<div class="section-label">Recently played</div>' + rows(recent) : ''}${rest.length ? '<div class="section-label">Your playlists</div>' + rows(rest) : ''}`;
+}
+let inspectedPlaylist = null;
+function playlistsPage() {
+  const c = active();
+  if (inspectedPlaylist) {
+    const p = playlists.find(p => p.id === inspectedPlaylist);
+    return `${header(p.name, 'Playlist details', 'close-details', true)}<p class="hint">${esc(p.description)} ${p.songs.length} sample songs. Inspecting does not replace your session.</p><button class="primary" data-start="${p.id}" data-fresh="true">${icon('shuffle')}Shuffle & play</button>${p.songs.map(([ai, ti]) => `<div class="song-row"><img src="${albums[ai].art}" alt=""><span><strong>${esc(albums[ai].tracks[ti])}</strong><small>${esc(albums[ai].artist)}</small></span></div>`).join('')}`;
+  }
+  return `${header('Your playlists', c.name, c.session ? 'player' : 'settings', true)}
+    <div class="page-body"><h3 class="picker-heading">${c.session ? 'What’s next?' : 'Start with a playlist.'}</h3><p class="hint">Tap shuffle to start it in the full player. Next time, you’ll open right to the music.</p>
+    <label class="search">${icon('search')}<input type="search" aria-label="Search playlists" placeholder="Find a playlist" value="${esc(query)}"></label><div class="playlist-results">${playlistResults()}</div>
+    <p class="demo-note">Playlists can cross your accessible libraries. Browsing preferences won’t rewrite them.</p></div>`;
+}
+function ratingMarkup(t) {
+  const value = model.ratings[t.key] || 0;
+  const job = ratingJobs.get(t.key);
+  return `<div class="rating-block" data-rating-key="${t.key}">
+    <div class="rating-meta"><span>Your song rating · ${value ? value + '/5' : 'Not rated'}</span><button class="text-button clear-rating" data-rating="0" ${job?.pending || !value ? 'disabled' : ''}>Clear</button></div>
+    <div class="rating-options" role="radiogroup" aria-label="Song rating">${[1, 2, 3, 4, 5].map(n => `<button class="icon-button star-button ${n <= value ? 'selected' : ''}" role="radio" aria-checked="${n === value}" aria-label="${n} ${n === 1 ? 'star' : 'stars'}" data-rating="${n}" ${job?.pending ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div>
+    <div class="rating-error-line"><span class="rating-status ${job?.error ? 'error' : ''}" role="status">${job?.pending ? 'Saving rating… (simulated)' : job?.error ? esc(job.error) : job?.saved ? 'Saved to Navidrome · simulated' : 'Navidrome song rating · sample value'}</span>${job?.error ? '<button class="text-button rating-retry" data-action="retry-rating">Retry</button>' : ''}</div>
+  </div>`;
+}
+function playerPage() {
+  const c = active(), t = currentSong();
+  if (!t) return playlistsPage();
+  return `<div class="app-top player-top"><div class="context"><span class="kicker">Listening to</span><strong>${esc(t.playlist.name)}</strong><small>${esc(c.name)} · ${esc(c.account)}</small></div>${button('settings', 'Server and libraries', 'settings')}</div>
+    <img class="player-art" src="${t.album.art}" alt="${esc(t.album.title)} — illustrative artwork">
+    <div class="song-heading"><div><h3>${esc(t.title)}</h3><p>${esc(t.album.artist)}</p></div></div>
+    ${ratingMarkup(t)}
+    <input class="seek" type="range" min="0" max="258" value="${c.session.position}" aria-label="Playback position"><div class="times"><span class="elapsed">${time(c.session.position)}</span><span>4:18</span></div>
+    <div class="play-controls"><button class="icon-button ${c.session.shuffle ? 'active' : ''}" aria-label="Shuffle" aria-pressed="${c.session.shuffle}" data-action="shuffle">${icon('shuffle')}</button>${button('previous', 'Previous track', 'previous')}<button class="icon-button big" data-action="resume" aria-label="${playing ? 'Pause' : 'Resume playback'}">${icon(playing ? 'pause' : 'play')}</button>${button('next', 'Next track', 'next')}<button class="icon-button ${c.session.repeat ? 'active' : ''}" aria-label="Repeat" aria-pressed="${c.session.repeat}" data-action="repeat">${icon('repeat')}</button></div>
+    <button class="change-playlist" data-action="playlists">${icon('library')}<span><strong>Change playlist</strong><small>Recent first · shuffle and play</small></span>${icon('down')}</button>
+    <div class="secondary-row"><button class="text-button" data-action="queue">${icon('queue')}Queue</button><span class="source-note">${playing ? 'PLAYING · DEMO' : 'READY TO RESUME'}</span></div>`;
+}
+function settingsPage() {
+  const c = active();
+  return `${header('Server & libraries', 'Connection settings', 'close-settings')}
+    <div class="page-body"><p class="hint">Connections on this device. Listening sessions stay separate for each server.</p>
+    ${model.connections.map(x => `<div class="connection-row ${x.id === c?.id ? 'active-connection' : ''}"><span class="connection-copy"><strong>${esc(x.name)}</strong><small>${esc(x.account)}<br>${esc(x.url)}</small></span>${x.id === c?.id ? '<span class="badge">ACTIVE</span>' : `<button class="text-button" data-switch="${x.id}">Switch</button>`}</div>`).join('')}
+    <button class="text-button" data-action="add-server">Add another server</button>
+    ${c ? `<div class="settings-section"><h4>Browse libraries</h4><p class="hint">${esc(c.libraries.filter(l => c.selected.includes(l.id)).map(l => l.name).join(', ') || 'None selected')}</p><div class="settings-actions"><button class="primary secondary" data-action="manage-libraries">Choose libraries</button><button class="primary secondary" data-action="refresh-libraries" ${loading ? 'disabled' : ''}>${loading ? 'Refreshing…' : 'Refresh list'}</button></div><p class="form-status" role="status">${esc(feedback)}</p><p class="demo-note">Refresh reads library access and names; it does not scan server disks. Existing playlists and queue are unchanged.</p></div>
+    <div class="settings-section"><h4>Server administration</h4><p class="hint">Create libraries, set folder paths, or grant access in Navidrome’s web interface. Administrator access may be required.</p><button class="primary secondary" data-action="admin">Open Navidrome administration</button></div>
+    <div class="settings-section settings-bottom"><button class="text-button" data-action="reconnect">Reconnect account</button><button class="text-button danger" data-action="remove">Remove connection</button></div>` : ''}</div>`;
+}
+function adminPage() {
+  const c = active();
+  return `${header('Navidrome administration', 'Browser handoff · preview', 'settings')}<div class="page-body"><h3 class="picker-heading">Manage the server<br>in Navidrome.</h3><p class="hint">In the real app this opens your server’s web interface, not an embedded admin login.</p><div class="connected-summary"><span><strong>${esc(c.name)}</strong><small>${esc(c.url)}</small></span></div><div class="benefit"><strong>Create or edit libraries</strong><p>In Navidrome, open Settings → Libraries as an administrator. Name the library and set its server-side folder path.</p></div><div class="benefit"><strong>Change account access</strong><p>Use Settings → Users to grant this account the libraries it should be able to access.</p></div><div class="benefit"><strong>Return here and refresh</strong><p>Back in Audio, refresh the library list to see newly accessible libraries.</p></div><p class="demo-note"><strong>Simulated handoff.</strong> No browser is opened and no server configuration changes.</p></div><div class="page-actions"><button class="primary secondary" data-action="settings">Back to server settings</button></div>`;
+}
+function removePage() {
+  const c = model.connections.find(x => x.id === removeId) || active();
+  return `${header('Remove connection?', 'This device only', 'cancel-remove')}<div class="page-body"><h3 class="picker-heading">Remove ${esc(c.name)}?</h3><div class="alert-box"><p>This forgets the connection and its listening session on this device. It does not delete music, playlists, accounts, or ratings from Navidrome.</p></div><p class="hint">${esc(c.account)}<br>${esc(c.url)}</p><p class="demo-note">In this prototype, only fictional local demo data changes.</p></div><div class="page-actions"><button class="primary secondary" data-action="cancel-remove">Cancel</button><button class="text-button danger" data-action="confirm-remove">Remove connection from this device</button></div>`;
+}
+function queuePage() {
+  const c = active(), t = currentSong();
+  if (!t) return playlistsPage();
+  return `${header('Your saved queue', t.playlist.name, 'player')}<p class="hint">Your order is kept when you resume. Browsing preferences do not remove songs from this queue.</p>${c.session.order.map((n, i) => {
+    const [ai, ti] = t.playlist.songs[n];
+    return `<div class="song-row ${i === c.session.index ? 'current' : ''}"><button data-queue-index="${i}"><span class="number">${i + 1}</span><img src="${albums[ai].art}" alt=""><span><strong>${esc(albums[ai].tracks[ti])}</strong><small>${esc(albums[ai].artist)}</small></span></button></div>`;
+  }).join('')}`;
+}
+function mini() {
+  const t = currentSong();
+  if (!t || !['settings', 'libraries', 'playlists', 'queue'].includes(screen)) return '';
+  return `<div class="mini"><button class="mini-open" data-action="player" aria-label="Open full player"><img src="${t.album.art}" alt=""><span><strong>${esc(t.title)}</strong><small>${esc(active().name)} · ${esc(t.playlist.name)}</small></span></button>${button(playing ? 'pause' : 'play', playing ? 'Pause' : 'Resume playback', 'mini-play')}</div>`;
+}
+function render() {
+  if (!active() && !['welcome', 'connect'].includes(screen)) screen = 'welcome';
+  const meta = descriptions[screen];
+  document.querySelector('#screen-number').textContent = meta[0];
+  document.querySelector('#screen-label').textContent = meta[1];
+  document.querySelector('#explain-title').textContent = meta[2];
+  document.querySelector('#explain-copy').textContent = meta[3];
+  document.querySelector('#explain-decision').textContent = meta[4];
+  document.querySelector('#explain-try').textContent = meta[5];
+  document.querySelector('#preview-screen').value = ['admin', 'remove'].includes(screen) ? 'settings' : screen;
+  device.classList.toggle('player-mode', screen === 'player');
+  device.dataset.screen = screen;
+  const renderer = { welcome: welcomePage, connect: connectPage, libraries: librariesPage, ready: readyPage, playlists: playlistsPage, player: playerPage, settings: settingsPage, queue: queuePage, admin: adminPage, remove: removePage }[screen];
+  device.innerHTML = `<div class="camera" aria-hidden="true"></div><div class="status"><span>9:41</span><span>${icon('signal')}${icon('wifi')}${icon('battery')}</span></div><div class="screen">${renderer()}</div>${mini()}<div class="gesture" aria-hidden="true"></div>`;
+  if (screen === 'remove') device.querySelector('.page-actions [data-action="cancel-remove"]')?.focus({ preventScroll: true });
+  if (!storageOK) document.querySelector('#storage-note').textContent = 'Browser storage unavailable. Demo changes may not survive reload. No credentials stored.';
+}
+function openLibraries(mode) {
+  libraryMode = mode;
+  libraryDraft = [...active().selected];
+  libraryError = '';
+  goto('libraries');
+}
+function enterPreview(target) {
+  invalidateAsync();
+  connecting = false;
+  loading = false;
+  connectError = '';
+  inspectedPlaylist = null;
+  editId = null;
+  if (!['welcome', 'connect'].includes(target)) {
+    const c = seedConnection();
+    if (['player', 'queue'].includes(target) && !c.session) {
+      c.session = { playlist: 'long-way', order: playlists[0].songs.map((_, i) => i), index: 0, position: 81, shuffle: true, repeat: false };
+      c.recents = ['long-way', 'daily'];
+      model.ratings[`${c.id}:0:1`] ??= 3;
+    }
+    if (target === 'libraries') {
+      libraryMode = 'setup';
+      libraryDraft = [...c.selected];
+      libraryError = '';
+    }
+    persist();
+  }
+  goto(target);
+}
+function startPlaylist(id, fresh = false) {
+  const c = active();
+  if (!c.session || c.session.playlist !== id || fresh) c.session = makeSession(id);
+  c.recents = [id, ...c.recents.filter(x => x !== id)];
+  playing = true;
+  inspectedPlaylist = null;
+  persist();
+  goto('player');
+}
+function rate(value) {
+  const t = currentSong();
+  if (!t || ratingJobs.get(t.key)?.pending) return;
+  const target = t.key;
+  const gen = generation;
+  const mode = outcome();
+  ratingJobs.set(target, { pending: true, value });
+  render();
+  setTimeout(() => {
+    if (gen !== generation) return;
+    if (mode === 'offline' || mode === 'rating-error') {
+      ratingJobs.set(target, { value, error: mode === 'offline' ? 'Not saved · offline. Previous rating kept.' : 'Save failed. Previous rating kept.' });
+    } else {
+      model.ratings[target] = value;
+      ratingJobs.set(target, { value, saved: true });
+      persist();
+    }
+    if (screen === 'player' && currentSong()?.key === target) {
+      render();
+      device.querySelector(`[data-rating="${value || 1}"]`)?.focus({ preventScroll: true });
+    }
+  }, 450);
+}
+function validateAddress(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return null;
+    return url.href.replace(/\/$/, '');
+  } catch { return null; }
+}
+device.addEventListener('submit', event => {
+  if (!event.target.matches('.connect-form')) return;
+  event.preventDefault();
+  if (connecting) return;
+  const form = event.target;
+  const url = validateAddress(form.elements.url.value.trim());
+  const user = form.elements.username.value.trim();
+  const password = form.elements.password.value;
+  const label = form.elements.label.value.trim() || 'My Navidrome';
+  form.querySelector('#url-error').textContent = '';
+  form.querySelector('#auth-error').textContent = '';
+  if (!url) {
+    form.querySelector('#url-error').textContent = 'Enter an HTTPS base address, without embedded credentials, query parameters, or a fragment.';
+    form.elements.url.focus();
+    return;
+  }
+  if (!user || !password) {
+    form.querySelector('#auth-error').textContent = 'Enter a username and a dummy password to preview sign-in.';
+    (!user ? form.elements.username : form.elements.password).focus();
+    return;
+  }
+  const mode = outcome();
+  const currentGeneration = generation;
+  const reconnectTarget = editId;
+  // Capture only non-secret display metadata. The supplied password is cleared now.
+  form.elements.password.value = '';
+  connecting = true;
+  connectError = '';
+  form.querySelector('fieldset').disabled = true;
+  form.querySelector('button[type="submit"]').textContent = 'Checking connection…';
+  form.querySelector('.form-status').textContent = 'Simulated sign-in and library discovery. No network request is sent.';
+  setTimeout(() => {
+    if (currentGeneration !== generation || screen !== 'connect') return;
+    connecting = false;
+    if (['auth', 'network', 'offline'].includes(mode)) {
+      connectError = mode === 'auth' ? 'Sign-in failed (simulated). Check your username and password, then try again.' : 'Server unreachable (simulated). Check the address and network, then retry.';
+      // Keep non-secret drafts, never the password, after a simulated failure.
+      render();
+      device.querySelector('#server-name').value = label;
+      device.querySelector('#server-url').value = url;
+      device.querySelector('#server-user').value = user;
+      return;
+    }
+    let c = model.connections.find(c => c.id === reconnectTarget);
+    if (!c) {
+      c = demoConnection(`demo-${Date.now()}-${model.connections.length}`, label, user, url);
+      model.connections.push(c);
+    } else {
+      const changedIdentity = c.account !== user || c.url !== url;
+      if (changedIdentity) {
+        // A different account or endpoint is a new connection, not a retargeted session.
+        c = demoConnection(`demo-${Date.now()}-${model.connections.length}`, label, user, url);
+        model.connections.push(c);
+      }
+    }
+    c.libraries = mode === 'no-libraries' ? [] : librarySamples.map(l => ({ ...l }));
+    c.selected = c.selected.filter(id => c.libraries.some(l => l.id === id));
+    if (!c.selected.length) c.selected = c.libraries.map(l => l.id);
+    model.active = c.id;
+    playing = false;
+    editId = null;
+    persist();
+    openLibraries(reconnectTarget ? 'manage' : 'setup');
+  }, 500);
+});
+device.addEventListener('input', event => {
+  if (event.target.matches('input[type="search"]')) {
+    query = event.target.value;
+    device.querySelector('.playlist-results').innerHTML = playlistResults();
+  }
+  if (event.target.matches('.seek')) {
+    active().session.position = Number(event.target.value);
+    device.querySelector('.elapsed').textContent = time(active().session.position);
+    persist();
+  }
+});
+device.addEventListener('change', event => {
+  if (!event.target.matches('.library-choice input')) return;
+  libraryDraft = [...device.querySelectorAll('.library-choice input:checked')].map(x => x.value);
+  device.querySelector('.library-count').textContent = `${libraryDraft.length} of ${active().libraries.length} selected`;
+  device.querySelector('[data-action="save-libraries"]').disabled = !libraryDraft.length;
+});
+device.addEventListener('click', event => {
+  const b = event.target.closest('button');
+  if (!b || b.disabled) return;
+  const c = active();
+  if (b.dataset.rating !== undefined) { rate(Number(b.dataset.rating)); return; }
+  if (b.dataset.start) { startPlaylist(b.dataset.start, b.dataset.fresh === 'true'); return; }
+  if (b.dataset.playlist) { inspectedPlaylist = b.dataset.playlist; goto('playlists'); return; }
+  if (b.dataset.switch) {
+    model.active = b.dataset.switch;
+    playing = false;
+    persist();
+    goto(active().session ? 'player' : 'playlists');
+    return;
+  }
+  if (b.dataset.queueIndex !== undefined) {
+    c.session.index = Number(b.dataset.queueIndex);
+    c.session.position = 0;
+    playing = true;
+    persist();
+    goto('player');
+    return;
+  }
+  const action = b.dataset.action;
+  if (['player', 'playlists', 'settings', 'queue', 'admin'].includes(action)) {
+    inspectedPlaylist = null;
+    query = '';
+    goto(action);
+  } else if (action === 'connect' || action === 'add-server' || action === 'reconnect') {
+    invalidateAsync();
+    editId = action === 'reconnect' ? c.id : null;
+    connecting = false;
+    connectError = '';
+    goto('connect');
+  } else if (action === 'cancel-connect') {
+    invalidateAsync();
+    connecting = false;
+    editId = null;
+    connectError = '';
+    goto(c ? 'settings' : 'welcome');
+  } else if (action === 'show-password') {
+    const input = device.querySelector('#server-password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    b.setAttribute('aria-label', input.type === 'password' ? 'Show password' : 'Hide password');
+  } else if (action === 'libraries') openLibraries('setup');
+  else if (action === 'manage-libraries') openLibraries('manage');
+  else if (action === 'cancel-libraries') goto('settings');
+  else if (action === 'save-libraries') {
+    if (!libraryDraft.length) { libraryError = 'Select at least one library.'; render(); return; }
+    c.selected = [...libraryDraft];
+    persist();
+    goto(libraryMode === 'setup' ? 'ready' : 'settings');
+  } else if (action === 'load-playlists') {
+    loading = true;
+    render();
+    const gen = generation;
+    setTimeout(() => {
+      if (generation !== gen || screen !== 'ready') return;
+      loading = false;
+      query = '';
+      goto('playlists');
+    }, 400);
+  } else if (action === 'refresh-access') {
+    if (['network', 'offline'].includes(outcome())) {
+      libraryError = 'Refresh failed (simulated). Your account access is unchanged.';
+      render();
+    } else {
+      c.libraries = librarySamples.map(l => ({ ...l }));
+      libraryDraft = c.libraries.map(l => l.id);
+      persist();
+      render();
+    }
+  } else if (action === 'refresh-libraries') {
+    const target = c.id, gen = generation, mode = outcome();
+    loading = true;
+    feedback = '';
+    render();
+    setTimeout(() => {
+      if (generation !== gen || active()?.id !== target || screen !== 'settings') return;
+      loading = false;
+      if (['network', 'offline'].includes(mode)) feedback = 'Refresh failed (simulated). Previous library selection kept.';
+      else {
+        c.libraries = librarySamples.map(l => ({ ...l }));
+        feedback = 'Library list refreshed · simulated. Your listening queue is unchanged.';
+        persist();
+      }
+      render();
+    }, 400);
+  } else if (action === 'remove') { removeId = c.id; goto('remove'); }
+  else if (action === 'cancel-remove') {
+    removeId = null;
+    goto('settings');
+    device.querySelector('[data-action="remove"]')?.focus({ preventScroll: true });
+  } else if (action === 'confirm-remove') {
+    invalidateAsync();
+    const target = removeId;
+    model.connections = model.connections.filter(c => c.id !== target);
+    model.active = model.connections[0]?.id || null;
+    removeId = null;
+    playing = false;
+    // Song ratings are server-owned in the real product. This demo does not delete them.
+    persist();
+    goto(active() ? 'settings' : 'welcome');
+  } else if (action === 'close-settings' || action === 'back') goto(c?.session ? 'player' : c ? 'playlists' : 'welcome');
+  else if (action === 'close-details') { inspectedPlaylist = null; goto('playlists'); }
+  else if (action === 'resume' || action === 'mini-play') {
+    playing = !playing;
+    if (action === 'mini-play') screen = 'player';
+    render();
+  } else if (action === 'next' || action === 'previous') {
+    c.session.index = (c.session.index + (action === 'next' ? 1 : c.session.order.length - 1)) % c.session.order.length;
+    c.session.position = 0;
+    persist();
+    render();
+  } else if (action === 'repeat') { c.session.repeat = !c.session.repeat; persist(); render(); }
+  else if (action === 'shuffle') {
+    const current = c.session.order[c.session.index];
+    c.session.shuffle = !c.session.shuffle;
+    const rest = c.session.order.filter(n => n !== current);
+    if (c.session.shuffle) rest.sort(() => Math.random() - .5);
+    else rest.sort((a, b) => a - b);
+    c.session.order = [current, ...rest];
+    c.session.index = 0;
+    persist();
+    render();
+  } else if (action === 'retry-rating') {
+    const target = currentSong().key;
+    rate(ratingJobs.get(target).value);
+  }
+});
+device.addEventListener('keydown', event => {
+  const radio = event.target.closest('[data-rating][role="radio"]');
+  if (radio && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault();
+    const current = Number(radio.dataset.rating);
+    const next = event.key === 'Home' ? 1 : event.key === 'End' ? 5 : Math.max(1, Math.min(5, current + (event.key === 'ArrowRight' ? 1 : -1)));
+    rate(next);
+  }
+  if (event.key === 'Escape') {
+    if (screen === 'remove') { removeId = null; goto('settings'); device.querySelector('[data-action="remove"]')?.focus(); }
+    else if (screen === 'libraries' && libraryMode === 'manage') goto('settings');
+    else if (screen === 'connect') { invalidateAsync(); connecting = false; goto(active() ? 'settings' : 'welcome'); }
+    else if (active()) goto(active().session ? 'player' : 'playlists');
+  }
+});
+document.querySelector('#preview-screen').addEventListener('change', event => {
+  const target = event.target.value;
+  history.replaceState(null, '', '#' + target);
+  enterPreview(target);
+});
+document.querySelector('#preview-outcome').addEventListener('change', () => {
+  // Review controls never change confirmed data on their own.
+});
+document.querySelector('#reset').addEventListener('click', () => {
+  invalidateAsync();
+  model = blank();
+  connecting = false;
+  loading = false;
+  playing = false;
+  inspectedPlaylist = null;
+  editId = null;
+  removeId = null;
+  query = '';
+  ratingJobs.clear();
+  document.querySelector('#preview-outcome').value = 'success';
+  history.replaceState(null, '', location.pathname);
+  persist();
+  goto('welcome');
+});
+document.querySelector('#reopen').addEventListener('click', () => {
+  invalidateAsync();
+  connecting = false;
+  loading = false;
+  playing = false;
+  for (const [key, job] of ratingJobs) if (job.pending) ratingJobs.delete(key);
+  history.replaceState(null, '', location.pathname);
+  goto(active()?.session ? 'player' : active() ? 'playlists' : 'welcome');
+});
+window.addEventListener('hashchange', () => {
+  const target = location.hash.slice(1);
+  if (descriptions[target]) enterPreview(target);
+});
+// V5-only presentation and dummy-form conveniences; the earlier versions stay intact.
+let ratingPopupOpen = false;
+let ratingPopupTarget = null;
+const previousRender = render;
+
+function compactRatingButton(t) {
+  const value = model.ratings[t.key] || 0;
+  const job = ratingJobs.get(t.key);
+  const label = job?.pending ? 'Saving' : job?.error ? 'Retry' : value ? `${value}/5` : 'Rate';
+  return `<button class="rating-trigger ${value ? 'rated' : ''}" data-action="open-rating" aria-label="Rate song, ${value ? value + ' of 5 stars' : 'not rated'}" aria-haspopup="dialog" aria-expanded="${ratingPopupOpen}">${icon('star')}<span>${label}</span></button>`;
+}
+
+playerPage = function readablePlayerPage() {
+  const c = active(), t = currentSong();
+  if (!t) return playlistsPage();
+  return `<div class="app-top player-top"><div class="context"><span class="kicker">Listening to</span><strong>${esc(t.playlist.name)}</strong></div>${button('settings', 'Server and libraries', 'settings')}</div>
+    <div class="player-visual"><img class="player-art" src="${t.album.art}" alt="${esc(t.album.title)} — illustrative artwork"></div>
+    <div class="song-heading player-song"><div><h3>${esc(t.title)}</h3><p>${esc(t.album.artist)}</p></div>${compactRatingButton(t)}</div>
+    <div class="player-seek"><input class="seek" type="range" min="0" max="258" value="${c.session.position}" aria-label="Playback position"><div class="times"><span class="elapsed">${time(c.session.position)}</span><span>4:18</span></div></div>
+    <div class="play-controls"><button class="icon-button ${c.session.shuffle ? 'active' : ''}" aria-label="Shuffle" aria-pressed="${c.session.shuffle}" data-action="shuffle">${icon('shuffle')}</button>${button('previous', 'Previous track', 'previous')}<button class="icon-button big" data-action="resume" aria-label="${playing ? 'Pause' : 'Resume playback'}">${icon(playing ? 'pause' : 'play')}</button>${button('next', 'Next track', 'next')}<button class="icon-button ${c.session.repeat ? 'active' : ''}" aria-label="Repeat" aria-pressed="${c.session.repeat}" data-action="repeat">${icon('repeat')}</button></div>
+    <button class="change-playlist" data-action="playlists">${icon('library')}<span><strong>Change playlist</strong><small>Recent first · shuffle and play</small></span>${icon('down')}</button>
+    <div class="secondary-row"><button class="text-button" data-action="queue">${icon('queue')}Queue</button><span class="source-note">${playing ? 'PLAYING · DEMO' : 'READY TO RESUME'}</span></div>`;
+};
+
+function popupMarkup(t) {
+  const value = model.ratings[t.key] || 0;
+  const job = ratingJobs.get(t.key);
+  const message = job?.pending ? 'Saving rating… (simulated)' : job?.error ? job.error : job?.saved ? 'Saved to Navidrome · simulated' : 'Choose a rating for this song.';
+  return `<dialog class="rating-dialog" aria-labelledby="rating-title" aria-describedby="rating-song rating-help">
+    <h3 id="rating-title">Rate this song</h3>
+    <p class="rating-song" id="rating-song">${esc(t.title)}</p><p class="rating-artist">${esc(t.album.artist)}</p>
+    <p class="rating-value">Your rating: ${value ? value + ' of 5 stars' : 'Not rated'}</p>
+    <div class="rating-choices" role="radiogroup" aria-label="Song rating">${[1, 2, 3, 4, 5].map(n => `<button class="rating-choice ${n <= value ? 'filled' : ''}" role="radio" aria-checked="${n === value}" aria-label="${n} ${n === 1 ? 'star' : 'stars'}" data-rating="${n}" ${job?.pending ? 'disabled' : ''}>${icon('star')}<span>${n}</span></button>`).join('')}</div>
+    <div class="rating-error-line"><span class="rating-status ${job?.error ? 'error' : ''}" role="status">${esc(message)}</span>${job?.error ? '<button class="text-button rating-retry" data-action="retry-rating">Retry</button>' : ''}</div>
+    <p class="rating-help" id="rating-help">Tap a star to save. Clear removes your rating. This preview does not send changes to a server.</p>
+    <div class="rating-dialog-actions"><button class="text-button clear-rating" data-rating="0" ${job?.pending || !value ? 'disabled' : ''}>Clear rating</button><button class="primary" data-action="close-rating">Done</button></div>
+  </dialog>`;
+}
+
+function closeRatingPopup() {
+  ratingPopupOpen = false;
+  ratingPopupTarget = null;
+  const dialog = device.querySelector('.rating-dialog');
+  if (dialog?.open) dialog.close();
+  dialog?.remove();
+  const trigger = device.querySelector('[data-action="open-rating"]');
+  trigger?.setAttribute('aria-expanded', 'false');
+  trigger?.focus({ preventScroll: true });
+}
+
+render = function readableRender() {
+  if (screen !== 'player' || currentSong()?.key !== ratingPopupTarget) {
+    ratingPopupOpen = false;
+    ratingPopupTarget = null;
+  }
+  previousRender();
+  if (screen === 'libraries') device.querySelector('.disclosure')?.remove();
+  if (screen === 'connect') {
+    const demo = {
+      'server-name': 'Demo home',
+      'server-url': 'https://music.example.com',
+      'server-user': 'demo-listener',
+      'server-password': 'demo-only',
+    };
+    for (const [id, value] of Object.entries(demo)) {
+      const input = device.querySelector('#' + id);
+      if (input && !input.value) input.value = value;
+    }
+    device.querySelector('.hint').textContent = 'Demo values are filled in. Tap Connect to explore—nothing is sent.';
+    device.querySelector('.demo-note').textContent = 'Mockup only: sample account, no real sign-in or password storage.';
+  }
+  if (ratingPopupOpen && currentSong()?.key === ratingPopupTarget) {
+    const t = currentSong();
+    device.insertAdjacentHTML('beforeend', popupMarkup(t));
+    const dialog = device.querySelector('.rating-dialog');
+    dialog.addEventListener('cancel', event => { event.preventDefault(); closeRatingPopup(); });
+    dialog.addEventListener('click', event => {
+      if (event.target !== dialog) return;
+      const r = dialog.getBoundingClientRect();
+      if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) closeRatingPopup();
+    });
+    dialog.showModal();
+    const selected = dialog.querySelector('[aria-checked="true"]:not(:disabled)') || dialog.querySelector('[role="radio"]:not(:disabled)') || dialog.querySelector('[data-action="close-rating"]');
+    selected?.focus({ preventScroll: true });
+  }
+};
+
+device.addEventListener('click', event => {
+  const action = event.target.closest('button')?.dataset.action;
+  if (action !== 'open-rating' && action !== 'close-rating') return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (action === 'close-rating') closeRatingPopup();
+  else {
+    ratingPopupOpen = true;
+    ratingPopupTarget = currentSong().key;
+    render();
+  }
+}, true);
+
+device.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && ratingPopupOpen) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeRatingPopup();
+  }
+}, true);
+
+descriptions.player = ['06', 'Player & rating popup', 'One small star. A bigger decision surface.', 'The player uses its full height: artwork above, readable song details, and playback and playlist controls below. The star beside the song opens a large rating popup.', 'The five choices are deliberately not packed into the player. Their popup has large individual targets, Clear, save feedback, Retry, and Done. Escape restores focus to the star.', 'Tap the star beside the title, choose a rating, then Done. Try offline or save failure using the preview outcome selector.'];
+descriptions.libraries[5] = 'Choose the libraries to browse, then Continue. The extra playlist explanation is omitted so the setup action fits without scrolling.';
+descriptions.connect = ['02', 'Connect to Navidrome', 'Preview the flow without typing.', 'All four fields are prefilled with fictional values in this mockup. Click Connect & discover libraries to continue. The earlier validation-focused versions are preserved.', 'This convenience is preview-only. No account is authenticated and no password is sent or persisted. Error scenarios remain available in the outcome menu.', 'Click Connect immediately—no data entry needed. Failure and retry use the same dummy values.'];
+
+const initialPreview = location.hash.slice(1);
+if (descriptions[initialPreview]) enterPreview(initialPreview);
+else goto(active()?.session ? 'player' : active() ? 'playlists' : 'welcome');
+
+})();
+</script>
+</body>
+</html>

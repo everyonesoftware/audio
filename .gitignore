@@ -1,0 +1,10 @@
+node_modules/
+test-results/
+dist/
+__pycache__/
+*.jks
+*.keystore
+*.p12
+
+# Local production signing key and GitHub Actions secret values.
+/.signing/

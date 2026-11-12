@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio — first install, libraries & ratings · v3</title>
+<style>
+/* BASE_STYLES */
+/* FLOW_STYLES */
+</style>
+</head>
+<body>
+<main class="board">
+  <header class="mast">
+    <div class="brand">audio</div>
+    <span class="eyebrow">Android / First-install study 003</span>
+  </header>
+  <section class="intro">
+    <div>
+      <span class="eyebrow">Connect once. Get back to listening.</span>
+      <h1>The first five minutes.</h1>
+      <p>A guided start, a clear home for your server and libraries, and song ratings in the player.<br>The playlist-first listening flow stays the same. Themes can wait.</p>
+    </div>
+    <div class="intent"><b>Interactive design prototype</b><br>Dummy values only. No sign-in, music playback, or rating is sent to a real server.</div>
+  </section>
+  <div class="toolbar">
+    <div class="toolbar-controls">
+      <select id="preview-screen" aria-label="Preview screen">
+        <option value="welcome">01 · Fresh install</option>
+        <option value="connect">02 · Connect to Navidrome</option>
+        <option value="libraries">03 · Choose libraries</option>
+        <option value="ready">04 · Ready to listen</option>
+        <option value="playlists">05 · Choose a playlist</option>
+        <option value="player">06 · Player & five-star rating</option>
+        <option value="settings">07 · Server & library management</option>
+        <option value="queue">08 · Saved listening queue</option>
+      </select>
+      <select id="preview-outcome" aria-label="Simulated server outcome">
+        <option value="success">Preview · success</option>
+        <option value="auth">Preview · wrong password</option>
+        <option value="network">Preview · server unreachable</option>
+        <option value="no-libraries">Preview · no library access</option>
+        <option value="rating-error">Preview · rating save fails</option>
+        <option value="offline">Preview · offline</option>
+      </select>
+      <button class="board-button" id="reopen">Reopen app</button>
+      <button class="board-button" id="reset">Restart first-install demo</button>
+    </div>
+    <span class="prototype-note" id="storage-note">Only fictional demo state is saved in this browser. Never enter real credentials.</span>
+  </div>
+  <section class="workbench">
+    <aside class="journey" aria-label="Experience outline">
+      <span class="eyebrow">The experience</span>
+      <h2>Setup is a short detour.</h2>
+      <ol>
+        <li><b>Make the first step obvious.</b><span>Connect your existing Navidrome account. No new Audio account.</span></li>
+        <li><b>Choose what you browse.</b><span>Use the libraries your server account can already access.</span></li>
+        <li><b>Start your usual playlist.</b><span>One shuffle action opens the full player.</span></li>
+        <li><b>Then get out of the way.</b><span>Next launch restores your listening session.</span></li>
+      </ol>
+      <div class="journey-bottom">One provisional theme.<br>No extra album-first home screen.</div>
+    </aside>
+    <div class="device-column">
+      <div class="label"><span class="step" id="screen-number">01</span><h2 id="screen-label">Fresh install</h2><small>Interactive phone</small></div>
+      <div class="phone"><section class="device" aria-label="Audio first-install prototype"></section></div>
+    </div>
+    <aside class="explanation" aria-live="polite">
+      <span class="eyebrow">What this screen does</span>
+      <h2 id="explain-title"></h2>
+      <p id="explain-copy"></p>
+      <div class="explain-detail"><h3>Design decision</h3><p id="explain-decision"></p></div>
+      <div class="explain-detail"><h3>Try it</h3><p id="explain-try"></p></div>
+      <p class="research-note">Library selection is not server administration. Five-star ratings are separate from Navidrome’s single favorite star. Both distinctions are reflected in the flow.</p>
+    </aside>
+  </section>
+  <footer class="footer"><span>DESIGN PREVIEW · All accounts, libraries, playlists, songs, and saved outcomes are fictional.<br>Screen shortcuts seed sample setup where needed. Reset starts from a genuine empty demo.</span><span>v1 and v2 are preserved.<br>Browser tests do not establish Android or Navidrome integration.</span></footer>
+</main>
+<script>
+'use strict';
+(() => {
+/* SAMPLE_ASSETS */
+/* FLOW_SCRIPT */
+})();
+</script>
+</body>
+</html>
