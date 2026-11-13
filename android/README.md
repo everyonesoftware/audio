@@ -6,6 +6,7 @@ Music replaces Audio as the native app's display name only. The application ID, 
 
 ## Current slice
 
+- Native GitHub-backed updates: daily foreground checks with a Settings opt-out, manual checking, Library/Now Playing download-dot icons, explicit download/cancel/retry, package/version/signer/integrity preflight and a user-confirmed Android installer flow. Checking/downloading never sends a playback command; installation requires paused playback and a saved-session checkpoint. See [UPDATING.md](UPDATING.md) for privacy, signing, permission and verification boundaries.
 - Welcome → connect with an existing Navidrome username/password → accessible libraries → playlists → full player.
 - Direct Subsonic-compatible requests to the configured server, including base paths. No Music account/backend/proxy.
 - Playlist search and a direct Shuffle action. Refresh puts the most recently played playlist first. The phone UI does not yet implement playlist inspection or a longer recent-playlist history; the car browser supports playlist inspection.
@@ -62,7 +63,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
 ```
 
-On Windows cmd/PowerShell use `gradlew.bat` instead of `./gradlew`. The wrapper pins the Gradle distribution SHA-256. The APK is `app/build/outputs/apk/debug/app-debug.apk` and uses a local **debug** signing key. Signed release builds and GitHub publication are configured separately in [RELEASING.md](RELEASING.md); persistent signing secrets are required, and no automatic in-app updater is implemented.
+On Windows cmd/PowerShell use `gradlew.bat` instead of `./gradlew`. The wrapper pins the Gradle distribution SHA-256. The APK is `app/build/outputs/apk/debug/app-debug.apk` and uses a local **debug** signing key. Signed release builds and GitHub publication are configured separately in [RELEASING.md](RELEASING.md); persistent signing secrets are required. The [in-app updater](UPDATING.md) checks automatically but downloads and installation require user approval; debug and release signers are not interchangeable.
 
 ## Native verification
 
@@ -105,6 +106,6 @@ Verified on an isolated API 36 Google APIs x86_64 emulator:
 
 This is a first native slice, not a production release. No personal server, real credentials or physical phone were used. Real Navidrome deployments, reverse proxies, unusual libraries, API-key-only authentication, hardware codecs, Bluetooth/headset controls, real lock-screen behavior, interruptions, battery restrictions and older Android versions need further verification. The current authentication UI supports username/password token authentication, not API-key-only accounts.
 
-Offline downloads, casting, equalization, playlist editing and automatic in-app updates are not implemented. The Android Auto integration described above still needs real host/DHU and vehicle testing. The GitHub release workflow supports signing/publication once repository secrets are configured; hosted publication is verified separately from local builds. Library selection currently persists preferences; there is no native album/all-song browser for those preferences to filter yet. Server administration remains in Navidrome.
+Offline music downloads, casting, equalization and playlist editing are not implemented. The Android Auto integration described above still needs real host/DHU and vehicle testing. The GitHub release workflow supports signing/publication once repository secrets are configured; hosted publication is verified separately from local builds. Server administration remains in Navidrome. App updates are user-confirmed, not silent or forced.
 
 For a first personal trial, install the debug APK manually and enter credentials **in the app**, not in chat or repository files. Use a valid HTTPS address, including any reverse-proxy base path. Never disable TLS validation to work around a certificate problem.

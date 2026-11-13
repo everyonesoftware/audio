@@ -12,6 +12,10 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import com.everyonesoftware.audio.ui.AudioApp
 import com.everyonesoftware.audio.ui.AudioTheme
 import com.everyonesoftware.audio.ui.AudioViewModel
@@ -27,6 +31,17 @@ class MainActivity : ComponentActivity() {
             AudioTheme { AudioApp(state, model, artwork) }
         }
         if (savedInstanceState == null) handleVoiceIntent(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                model.installIntents.collect { request ->
+                    if (model.allowInstallerLaunch(request)) {
+                        try { startActivity(request) }
+                        catch (_: android.content.ActivityNotFoundException) { model.installerLaunchFailed() }
+                        catch (_: SecurityException) { model.installerLaunchFailed() }
+                    }
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -38,6 +53,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         model.onForeground()
+    }
+
+    override fun onStop() {
+        model.onBackground()
+        super.onStop()
     }
 
     private fun handleVoiceIntent(intent: Intent) {

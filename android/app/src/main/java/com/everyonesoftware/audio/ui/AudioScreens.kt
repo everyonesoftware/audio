@@ -52,9 +52,13 @@ import com.everyonesoftware.audio.data.Song
 @Composable
 fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
     val home = if (state.session != null) Screen.PLAYER else if (state.connection != null) Screen.PLAYLISTS else Screen.WELCOME
-    val showNavigation = state.connection != null && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE)
+    val showNavigation = (state.connection != null || state.screen == Screen.UPDATES) && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE, Screen.UPDATES)
     BackHandler(enabled = state.screen != Screen.WELCOME && state.screen != Screen.PLAYER) {
-        actions.showScreen(if (state.screen == Screen.QUEUE) Screen.PLAYER else home)
+        actions.showScreen(when (state.screen) {
+            Screen.UPDATES -> state.updatesReturnScreen
+            Screen.QUEUE -> Screen.PLAYER
+            else -> home
+        })
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).imePadding()) {
@@ -77,9 +81,10 @@ fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?)
                         Screen.PLAYER -> Player(state, actions, artworkUrl)
                         Screen.SETTINGS -> Settings(state, actions, home)
                         Screen.QUEUE -> Queue(state, actions, artworkUrl)
+                        Screen.UPDATES -> Updates(state, actions)
                     }
                 }
-                if (state.session?.queue?.getOrNull(state.session.index) != null && state.screen in listOf(Screen.SETTINGS, Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.QUEUE)) {
+                if (state.session?.queue?.getOrNull(state.session.index) != null && state.screen in listOf(Screen.SETTINGS, Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.QUEUE, Screen.UPDATES)) {
                     MiniPlayer(state, actions, artworkUrl)
                 }
                 if (showNavigation) {
@@ -91,7 +96,7 @@ fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?)
 }
 
 @Composable
-private fun Header(title: String, eyebrow: String = "", back: (() -> Unit)? = null, settings: (() -> Unit)? = null) {
+private fun Header(title: String, eyebrow: String = "", back: (() -> Unit)? = null, settings: (() -> Unit)? = null, update: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
         if (back != null) AudioIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = back)
         Column(Modifier.weight(1f)) {
@@ -99,6 +104,7 @@ private fun Header(title: String, eyebrow: String = "", back: (() -> Unit)? = nu
             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         }
         if (settings != null) AudioIcon(Icons.Default.Settings, "Server and libraries", onClick = settings)
+        if (update != null) UpdateNotificationIcon(update)
     }
 }
 
@@ -113,7 +119,7 @@ private fun AudioIcon(icon: ImageVector, label: String, modifier: Modifier = Mod
 private fun MainNavigation(screen: Screen, actions: AudioUiActions) {
     val selected = when (screen) {
         Screen.SEARCH -> Screen.SEARCH
-        Screen.SETTINGS -> Screen.SETTINGS
+        Screen.SETTINGS, Screen.UPDATES -> Screen.SETTINGS
         else -> Screen.PLAYLISTS
     }
     // Paint behind system navigation, but keep tab targets inside the safe drawing area.
@@ -252,7 +258,7 @@ private fun Artwork(id: String?, artworkUrl: (String?) -> String?, modifier: Mod
 @Composable
 private fun Playlists(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
     Column(Modifier.fillMaxSize()) {
-        Header("Library", state.connection?.name.orEmpty())
+        Header("Library", state.connection?.name.orEmpty(), update = if (state.updates.release != null) ({ actions.showScreen(Screen.UPDATES) }) else null)
         Surface(Modifier.fillMaxWidth().clickable { actions.showScreen(Screen.SEARCH) }, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
             Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -401,6 +407,7 @@ private fun Player(state: AudioUiState, actions: AudioUiActions, artworkUrl: (St
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, null)
                     Text("Queue", Modifier.padding(start = 6.dp))
                 }
+                if (state.updates.release != null) UpdateNotificationIcon { actions.showScreen(Screen.UPDATES) }
             }
             Box(if (scrollFallback) Modifier.fillMaxWidth().height(140.dp) else Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -512,6 +519,16 @@ private fun Settings(state: AudioUiState, actions: AudioUiActions, home: Screen)
                     }
                 }, Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text("Open Navidrome administration", style = MaterialTheme.typography.bodyMedium) }
                 ErrorMessage(browserError)
+            }
+            HorizontalDivider()
+            Surface(Modifier.fillMaxWidth().testTag("settings-updates").clickable { actions.showScreen(Screen.UPDATES) }, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                Row(Modifier.heightIn(min = 72.dp).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Updates", style = MaterialTheme.typography.titleMedium)
+                        Hint(if (state.updates.release != null) "A new version is available" else "Music ${state.updates.installedVersion}")
+                    }
+                    Icon(Icons.Default.ChevronRight, null)
+                }
             }
             ErrorMessage(state.error)
             Spacer(Modifier.height(8.dp))

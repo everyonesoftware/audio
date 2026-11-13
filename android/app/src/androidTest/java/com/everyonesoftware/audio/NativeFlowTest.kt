@@ -105,6 +105,9 @@ class NativeFlowTest {
         if (coldProbe) {
             val expected = Json.decodeFromString<ListeningSession>(java.io.File(app.getExternalFilesDir(null), "evidence/expected-session.json").readText())
             compose.waitUntil(15_000) { graph.session.value != null }
+            // Graph bootstrap restores the session before the activity finishes loading its
+            // connection/UI state. Wait for that boundary, not only the earlier graph write.
+            compose.waitUntil(20_000) { compose.onAllNodesWithTag("player-toggle").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("player-toggle").assertIsDisplayed()
             Assert.assertEquals(expected, graph.session.value)
             Assert.assertFalse(graph.playback.value.playing)

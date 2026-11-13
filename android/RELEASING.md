@@ -18,6 +18,8 @@ A 30-day workflow artifact also retains those three files. GitHub release assets
 
 ## Version rule
 
+The native updater consumes the published stable release's existing `release.json` and APK assets; see [UPDATING.md](UPDATING.md). Keep the `count`, `version`, `tag`, `sha`, `apk`, `sha256` and `bytes` schema and exact `Music-0.1.<count>.apk` filename consistent. No extra update server or GitHub token in the app is needed. Existing installs without the updater need one manual, same-key release upgrade to receive it. Do not distribute a debug APK as a replacement for a release-signed install.
+
 The sole build counter is `git rev-list --count HEAD` across the complete reachable history, including merged commits:
 
 | Field | Rule | Example at count 42 |

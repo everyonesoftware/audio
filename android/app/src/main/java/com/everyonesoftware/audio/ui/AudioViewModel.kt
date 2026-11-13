@@ -2,6 +2,7 @@ package com.everyonesoftware.audio.ui
 
 import android.app.Application
 import android.content.ComponentName
+import android.content.Intent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ import com.everyonesoftware.audio.data.NavidromeClient
 import com.everyonesoftware.audio.data.NavidromeException
 import com.everyonesoftware.audio.playback.PlaybackService
 import com.everyonesoftware.audio.playback.CarLibrary
+import com.everyonesoftware.audio.playback.CarMediaIds
 import com.everyonesoftware.audio.playback.SessionRules
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.UUID
@@ -30,6 +32,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AudioViewModel @JvmOverloads constructor(application: Application, private val graph: AudioGraph = (application as AudioApplication).graph, private val connectController: Boolean = true) : AndroidViewModel(application), AudioUiActions {
@@ -41,11 +45,17 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     private val initialization: Job
     private var generation = 0L
     private var firstLibrarySetup = false
+    private var installOperation: Job? = null
+    private val installRequests = Channel<Intent>(Channel.RENDEZVOUS)
+    val installIntents = installRequests.receiveAsFlow()
     private val controllerFuture: ListenableFuture<MediaController>? = if (connectController) {
         MediaController.Builder(application, SessionToken(application, ComponentName(application, PlaybackService::class.java))).buildAsync()
     } else null
 
     init {
+        viewModelScope.launch {
+            graph.updates.state.collect { updates -> current.update { it.copy(updates = updates) } }
+        }
         initialization = viewModelScope.launch {
             try {
                 graph.bootstrap()
@@ -129,6 +139,9 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     }
 
     override fun showScreen(screen: Screen) {
+        if (screen == Screen.UPDATES && current.value.screen != Screen.UPDATES) {
+            current.update { it.copy(updatesReturnScreen = it.screen) }
+        }
         if (current.value.screen == Screen.CONNECT && screen != Screen.CONNECT) {
             ++generation; operation?.cancel()
             current.update { it.copy(loading = false) }
@@ -236,8 +249,73 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     }
 
     fun onForeground() {
+        if (connectController) graph.updates.onForeground()
         if (!current.value.booting && current.value.screen == Screen.PLAYLISTS) loadPlaylists()
     }
+
+    fun onBackground() { installOperation?.cancel() }
+
+    override fun checkForUpdates() { graph.updates.coordinator.check() }
+    override fun setAutomaticUpdates(enabled: Boolean) { graph.updates.coordinator.setAutomaticChecks(enabled) }
+    override fun downloadUpdate() { graph.updates.coordinator.download() }
+    override fun cancelUpdateDownload() { graph.updates.coordinator.cancelDownload() }
+    override fun pauseForUpdate() = playerCommand { it.pause() }
+
+    /** A separate, freshly confirmed action; no check or download ever sends a player command. */
+    override fun installUpdate() {
+        if (installOperation?.isActive == true) return
+        installOperation = viewModelScope.launch {
+            val updater = graph.updates.coordinator
+            var handedOff = false
+            try {
+                if (current.value.session != null) {
+                    val player = controller()
+                    if (player.playWhenReady || player.isPlaying) return@launch
+                }
+                if (!graph.updates.canInstall()) {
+                    updater.permissionRequired(true)
+                    installRequests.send(graph.updates.permissionIntent())
+                    return@launch
+                }
+                val (file, release) = updater.beginInstall() ?: return@launch
+                val intent = graph.updates.verifiedInstallIntent(file, release)
+                // Recheck after IO: a car/controller may have resumed or changed the queue.
+                val session = graph.session.value
+                if (session != null) {
+                    val player = controller()
+                    if (player.playWhenReady || player.isPlaying) { updater.installFailed(); return@launch }
+                    if (player.mediaItemCount > 0) {
+                        val index = player.currentMediaItemIndex
+                        check(index in session.queue.indices && player.currentMediaItem?.mediaId ==
+                            CarMediaIds.queued(session.connectionId, session.queueId, index))
+                        graph.updateProgress(index, player.currentPosition, player.repeatMode,
+                            session.connectionId, session.queueId, session.queue.map { it.id })
+                        check(graph.session.value?.queueId == session.queueId &&
+                            graph.session.value?.connectionId == session.connectionId)
+                    }
+                }
+                installRequests.send(intent)
+                handedOff = true
+            } catch (cancelled: CancellationException) {
+                if (!handedOff) updater.installerReturned()
+                throw cancelled
+            } catch (_: Exception) { updater.installFailed() }
+        }
+    }
+
+    /** Main-thread check immediately before the activity hands control to Android. */
+    fun allowInstallerLaunch(intent: Intent): Boolean {
+        if (intent.type != "application/vnd.android.package-archive") return true
+        val player = controllerFuture?.takeIf { it.isDone && !it.isCancelled }?.let {
+            try { it.get() } catch (_: Exception) { null }
+        }
+        val allowed = !current.value.playing && (current.value.session == null ||
+            (player != null && !player.playWhenReady && !player.isPlaying))
+        if (!allowed) graph.updates.coordinator.installFailed()
+        return allowed
+    }
+
+    fun installerLaunchFailed() { graph.updates.coordinator.installFailed() }
 
     override fun startPlaylist(id: String) {
         if (current.value.loading) return

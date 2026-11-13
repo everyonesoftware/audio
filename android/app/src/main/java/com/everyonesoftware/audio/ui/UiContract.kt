@@ -7,7 +7,9 @@ import com.everyonesoftware.audio.data.MusicLibrary
 import com.everyonesoftware.audio.data.Playlist
 import com.everyonesoftware.audio.data.Song
 
-enum class Screen { WELCOME, CONNECT, LIBRARIES, READY, PLAYLISTS, SEARCH, ALBUM, PLAYER, SETTINGS, QUEUE }
+import com.everyonesoftware.audio.updates.UpdateUiState
+
+enum class Screen { WELCOME, CONNECT, LIBRARIES, READY, PLAYLISTS, SEARCH, ALBUM, PLAYER, SETTINGS, QUEUE, UPDATES }
 
 data class AudioUiState(
     val booting: Boolean = true,
@@ -35,9 +37,17 @@ data class AudioUiState(
     val durationMs: Long = 0,
     val ratingBusy: Boolean = false,
     val ratingError: String? = null,
+    val updates: UpdateUiState = UpdateUiState(),
+    val updatesReturnScreen: Screen = Screen.SETTINGS,
 )
 
 interface AudioUiActions {
+    fun checkForUpdates() = Unit
+    fun setAutomaticUpdates(enabled: Boolean) = Unit
+    fun downloadUpdate() = Unit
+    fun cancelUpdateDownload() = Unit
+    fun installUpdate() = Unit
+    fun pauseForUpdate() = Unit
     fun connect(name: String, url: String, username: String, password: String)
     fun showScreen(screen: Screen)
     fun setLibrary(id: String, selected: Boolean)

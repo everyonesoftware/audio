@@ -7,6 +7,8 @@ import com.everyonesoftware.audio.data.ListeningSession
 import com.everyonesoftware.audio.data.NavidromeClient
 import com.everyonesoftware.audio.data.PlaylistCatalog
 import com.everyonesoftware.audio.playback.SessionRules
+import com.everyonesoftware.audio.updates.UpdateManager
+import com.everyonesoftware.audio.updates.UpdateClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,9 +19,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class PlaybackSnapshot(val playing: Boolean = false, val positionMs: Long = 0, val durationMs: Long = 0, val error: String? = null)
 
-class AudioGraph(context: Context) {
+class AudioGraph(context: Context, updateClient: UpdateClient = UpdateClient()) {
     val store = AudioStore(context)
     private val libraryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val updates = UpdateManager(context, libraryScope, updateClient)
     private val clientLock = Any()
     private var cachedClient: Pair<Credentials, NavidromeClient>? = null
     val playlists = PlaylistCatalog(libraryScope,
