@@ -142,7 +142,7 @@ private fun ErrorMessage(error: String?) {
 private fun Welcome(actions: AudioUiActions) {
     Column(Modifier.fillMaxSize().padding(vertical = 16.dp)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Hint("WELCOME TO AUDIO")
+            Hint("WELCOME TO MUSIC")
             Icon(Icons.Default.GraphicEq, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
             Text("Your music.\nRight where\nyou left it.", style = MaterialTheme.typography.headlineLarge)
             Text("A personal player for the music on your Navidrome server.")
@@ -167,7 +167,7 @@ private fun Connect(state: AudioUiState, actions: AudioUiActions, home: Screen) 
     Column(Modifier.fillMaxSize()) {
         Header("Connect your server", "Navidrome account", back = { actions.showScreen(home) })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Hint("Use your Navidrome account. You don’t need to create an Audio account.")
+            Hint("Use your Navidrome account. You don’t need to create a Music account.")
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth().testTag("connect-name"), enabled = !state.loading, label = { Text("Connection name (optional)") }, singleLine = true)
             OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth().testTag("connect-server-url"), enabled = !state.loading, label = { Text("Server address") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), singleLine = true)
             Hint("Use the server’s base address, including a subpath if needed.")

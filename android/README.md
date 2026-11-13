@@ -1,11 +1,13 @@
-# Audio Android — native alpha
+# Music Android — native alpha
 
 An experimental Kotlin/Jetpack Compose client, not a WebView wrapper. Application ID: `com.everyonesoftware.audio`; version `0.1.<Git commit count>`; minimum Android API 26; compile/target API 36. Before the first commit, local debug builds use `0.1.0`. The current UI follows the readable, playlist-first v5 draft. Its colors are provisional.
+
+Music replaces Audio as the native app's display name only. The application ID, signing key/configuration, and local data identifiers remain unchanged to support updates to existing installs without resetting saved accounts or listening sessions. Historical browser mockups retain their original names; this rename is not a claim of device verification.
 
 ## Current slice
 
 - Welcome → connect with an existing Navidrome username/password → accessible libraries → playlists → full player.
-- Direct Subsonic-compatible requests to the configured server, including base paths. No Audio account/backend/proxy.
+- Direct Subsonic-compatible requests to the configured server, including base paths. No Music account/backend/proxy.
 - Playlist search and a direct Shuffle action. Refresh puts the most recently played playlist first. The phone UI does not yet implement playlist inspection or a longer recent-playlist history; the car browser supports playlist inspection.
 - Playlist browsing shows cached rows immediately, then reconciles counts from actual `getPlaylist` entries with at most three detail requests at a time. A list-summary count of zero never disables Shuffle; an empty result is checked when starting playback. Refreshing counts does not replace or edit the listening queue.
 - Entering Playlists, returning to the foreground on that screen, and the persistent Refresh action request reconciliation. Successful rating changes invalidate counts and schedule debounced retries: six seconds by default, or after the affected playlist's advertised OpenSubsonic `validUntil` deadline when later. Different validity deadlines do not delay other playlists. Servers that omit this metadata and use a longer custom delay may still require a later manual refresh. Unavailable counts retain their last known values and are labelled instead of silently becoming zero. There is no continuous polling or forced server reevaluation.
@@ -38,15 +40,15 @@ Implementation follows the pinned Media3 1.8.0 APIs. References: [Serve content]
 
 ### Personal sideload / vehicle trial
 
-Android Auto can show generic media controls for phone playback without recognizing Audio as a browsable car app. A generic media card or an "opened on phone" message does not by itself identify the cause. This build already exports a native media browser with Playlists and Queue; it does not need to display the phone activity to browse or play music.
+Android Auto can show generic media controls for phone playback without recognizing Music as a browsable car app. A generic media card or an "opened on phone" message does not by itself identify the cause. This build already exports a native media browser with Playlists and Queue; it does not need to display the phone activity to browse or play music.
 
 For a GitHub/manual APK install, check Android Auto's **own** developer setting, **Unknown sources**. Google's [real-vehicle testing guide](https://developer.android.com/training/cars/testing#unknown-sources) documents this opt-in for sideloaded media apps; signing an APK alone does not make its installation source trusted. This setting is distinct from Android's permission to install APKs:
 
 1. While parked, open Android Auto settings on the phone, expand the Version information near the bottom, and tap the version/permission information ten times. Accept the development-settings prompt.
 2. Open the overflow menu → Developer settings → Unknown sources. This allows other sideloaded compatible media apps too; enable it only if you accept that broader scope.
-3. Reconnect Android Auto and check whether Audio is available in its launcher/customize-launcher list. Open **Audio**, not the generic fallback media shortcut, and verify Playlists / Queue browsing, shuffle, track selection and previous/next controls.
+3. Reconnect Android Auto and check whether Music is available in its launcher/customize-launcher list. Open **Music**, not the generic fallback media shortcut, and verify Playlists / Queue browsing, shuffle, track selection and previous/next controls.
 
-If Audio still opens only on the phone, collect the installed Audio version, Android Auto version and service connection logs before changing controller authorization. Do not bypass UID/trust checks or pretend to be installed by Google Play. A trusted Play testing distribution is an alternative to the developer opt-in. Actual host rendering/recognition still requires a DHU or vehicle retest after updating the APK.
+If Music still opens only on the phone, collect the installed Music version, Android Auto version and service connection logs before changing controller authorization. Do not bypass UID/trust checks or pretend to be installed by Google Play. A trusted Play testing distribution is an alternative to the developer opt-in. Actual host rendering/recognition still requires a DHU or vehicle retest after updating the APK.
 
 ## Build
 

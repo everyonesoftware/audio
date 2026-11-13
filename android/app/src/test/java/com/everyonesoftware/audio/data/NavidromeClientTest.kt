@@ -195,7 +195,7 @@ class NavidromeClientTest {
                 assertEquals("1024", url.queryParameter("size"))
                 assertEquals("a+b &雪", url.queryParameter("u"))
                 assertEquals("1.16.1", url.queryParameter("v"))
-                assertEquals("EveryoneAudio", url.queryParameter("c"))
+                assertEquals("EveryoneMusic", url.queryParameter("c"))
                 assertNull(url.queryParameter("p"))
                 val salt = url.queryParameter("s")!!
                 val token = MessageDigest.getInstance("MD5").digest(("secret &雪" + salt).toByteArray(Charsets.UTF_8))

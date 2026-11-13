@@ -95,7 +95,7 @@ class PlaybackService : MediaLibraryService() {
         val sources = object : MediaSource.Factory by defaultSources {
             override fun createMediaSource(mediaItem: MediaItem): MediaSource {
                 val owner = mediaItem.localConfiguration?.tag as? QueueBinding
-                    ?: throw IllegalArgumentException("Choose music from Audio.")
+                    ?: throw IllegalArgumentException("Choose music from Music.")
                 val client = NavidromeClient(owner.credentials, allowLocalHttp = BuildConfig.DEBUG)
                 return DefaultMediaSourceFactory(OkHttpDataSource.Factory(streamClient(owner, client)))
                     .createMediaSource(mediaItem)
@@ -144,9 +144,9 @@ class PlaybackService : MediaLibraryService() {
             override fun onSetMediaItems(session: MediaSession, controller: MediaSession.ControllerInfo, mediaItems: List<MediaItem>, startIndex: Int, startPositionMs: Long): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                 val generation = ++selectionGeneration
                 return future {
-                    require(mediaItems.size == 1 && mediaItems.single().localConfiguration == null) { "Choose music from Audio." }
+                    require(mediaItems.size == 1 && mediaItems.single().localConfiguration == null) { "Choose music from Music." }
                     val request = mediaItems.single()
-                    require(request.requestMetadata.mediaUri == null) { "Choose music from Audio." }
+                    require(request.requestMetadata.mediaUri == null) { "Choose music from Music." }
                     val saved = selectMedia(request.mediaId, generation, request.requestMetadata.searchQuery)
                     val owner = requireNotNull(binding)
                     MediaSession.MediaItemsWithStartPosition(playbackItems(saved, owner), saved.index, saved.positionMs)
@@ -239,7 +239,7 @@ class PlaybackService : MediaLibraryService() {
         val job = serviceScope.launch {
             try { future.set(block()) }
             catch (cancelled: CancellationException) { future.cancel(false); throw cancelled }
-            catch (_: Exception) { future.setException(IllegalArgumentException("This music is unavailable. Refresh Audio and retry.")) }
+            catch (_: Exception) { future.setException(IllegalArgumentException("This music is unavailable. Refresh Music and retry.")) }
         }
         future.addListener({ if (future.isCancelled) job.cancel() }, MoreExecutors.directExecutor())
         return future
@@ -254,7 +254,7 @@ class PlaybackService : MediaLibraryService() {
                 error is IllegalArgumentException -> SessionError.ERROR_BAD_VALUE
                 else -> SessionError.ERROR_IO
             }
-            val message = if (graph.credentials.value == null) "Open Audio on your phone and connect to Navidrome."
+            val message = if (graph.credentials.value == null) "Open Music on your phone and connect to Navidrome."
                 else "Cannot load this music. Refresh the list or check the connection on your phone."
             return@future LibraryResult.ofError<T>(SessionError(code, message))
         }

@@ -62,9 +62,9 @@ class ReleaseTests(unittest.TestCase):
         self.package_fixture()
         output = Path(self.temp.name) / "dist"
         manifest = release.package(self.root, output)
-        self.assertEqual("Audio-0.1.3.apk", manifest["apk"])
+        self.assertEqual("Music-0.1.3.apk", manifest["apk"])
         self.assertEqual(3, manifest["count"])
-        self.assertTrue((output / "Audio-0.1.3.apk.sha256").is_file())
+        self.assertTrue((output / "Music-0.1.3.apk.sha256").is_file())
         self.assertEqual(manifest, release.validate(output, release.version(self.root)))
 
     def test_mismatched_android_version_is_rejected(self):
@@ -154,6 +154,7 @@ class ReleaseTests(unittest.TestCase):
                 result = {"object": {"type": "commit", "sha": expected["sha"]}}
             elif args[1:3] == ["release", "create"]:
                 self.assertIn("--draft", args)
+                self.assertEqual(f"Music {expected['version']}", args[args.index("--title") + 1])
                 state["release"] = {"isDraft": True, "targetCommitish": args[args.index("--target") + 1]}
             elif args[1:3] == ["release", "upload"]:
                 self.assertTrue(state["release"]["isDraft"])

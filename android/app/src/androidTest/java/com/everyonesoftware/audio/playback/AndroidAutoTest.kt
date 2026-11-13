@@ -151,7 +151,10 @@ class AndroidAutoTest {
     private fun root(): MediaItem {
         val result = onMain { browser.getLibraryRoot(null) }.get(15, TimeUnit.SECONDS)
         assertEquals("Auto must expose a real library root", 0, result.resultCode)
-        return requireNotNull(result.value)
+        val item = requireNotNull(result.value)
+        assertEquals("Music", item.mediaMetadata.title.toString())
+        assertEquals("Music", app.packageManager.getApplicationLabel(app.applicationInfo).toString())
+        return item
     }
     private fun children(id: String, page: Int = 0, size: Int = 100): List<MediaItem> {
         val result = onMain { browser.getChildren(id, page, size, null) }.get(15, TimeUnit.SECONDS)

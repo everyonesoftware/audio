@@ -1,4 +1,4 @@
-# Audio — playlist-first Android music player
+# Music — playlist-first Android music player
 
 A native Android alpha for Navidrome, plus the preserved interactive design studies that informed its layout. Native behavior is verified against isolated local protocol/audio fixtures; compatibility with a personal live Navidrome server and physical-device audio behavior remain to be tested.
 
@@ -6,7 +6,9 @@ A native Android alpha for Navidrome, plus the preserved interactive design stud
 
 The Kotlin/Compose application lives in `android/`. It connects directly to Navidrome, discovers accessible libraries, loads playlists, starts a shuffled queue in the full player, streams through a Media3 background service, and saves connection-scoped queue order, position, repeat and shuffle settings. Returning users reopen the full player; cold restore is paused, while an already-running service keeps playing. Five-star song ratings are read back from the server before becoming confirmed UI state.
 
-Credentials start blank and are encrypted with an Android Keystore-backed key. Release connections require HTTPS; debug-only loopback HTTP supports isolated tests. There is no Audio backend, account service, WebView, production demo content, or embedded server password.
+Music is the native app's new display name. It retains the application ID (`com.everyonesoftware.audio`), signing key/configuration, and local data identifiers to support updates to existing installs. Preserved browser mockups keep their historical names.
+
+Credentials start blank and are encrypted with an Android Keystore-backed key. Release connections require HTTPS; debug-only loopback HTTP supports isolated tests. There is no Music backend, account service, WebView, production demo content, or embedded server password.
 
 Build/setup, architecture, test commands, checkpoint semantics, and explicit alpha limitations are documented in [`android/README.md`](android/README.md). The debug APK builds to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -14,13 +16,13 @@ Verified locally: 49 JVM tests and 66 instrumentation tests on an isolated API 3
 
 ### Android Auto — first native integration
 
-Audio now declares media support for Android Auto and serves Playlists and Queue through its existing Media3 service. Browsing a playlist leaves playback unchanged; a shuffle action starts it, and choosing a queue occurrence keeps the existing queue identity. The phone and car controllers use the same player and persisted session. Playlist-name voice requests are supported; connection setup and ratings stay on the phone.
+Music now declares media support for Android Auto and serves Playlists and Queue through its existing Media3 service. Browsing a playlist leaves playback unchanged; a shuffle action starts it, and choosing a queue occurrence keeps the existing queue identity. The phone and car controllers use the same player and persisted session. Playlist-name voice requests are supported; connection setup and ratings stay on the phone.
 
 The integration is tested through real Media3 and legacy platform browsers on an isolated emulator, including streaming, stale-selection protection, subscription updates, and a two-process paused-restore probe. The user reports successful Android Auto vehicle playback and Bluetooth playback in a Tesla, with intermittent missing Tesla artwork in the earlier build. The service publishes both a small embedded current-song thumbnail and a higher-quality local content URI (up to 1024 pixels), from one authenticated download without exposing server URLs. Phone artwork is unchanged. The host chooses which representation to display; both vehicle paths still need a retest of this change. A car-player shuffle toggle and broader voice search remain deferred. The car host determines the actual layout; the browser study below is not a screenshot of the implementation. See [`android/README.md`](android/README.md) for scope and verification.
 
 ## Automated APK releases
 
-`.github/workflows/android-release.yml` builds on pushes to `main` or manual dispatch, tests/lints the app, signs a non-debuggable APK, and publishes it with a SHA-256 checksum and source metadata to GitHub Releases. Both jobs check out complete Git history. Android's version code is the Git commit count, with version name/tag/asset such as `0.1.42`, `v0.1.42`, and `Audio-0.1.42.apk`.
+`.github/workflows/android-release.yml` builds on pushes to `main` or manual dispatch, tests/lints the app, signs a non-debuggable APK, and publishes it with a SHA-256 checksum and source metadata to GitHub Releases. Both jobs check out complete Git history. Android's version code is the Git commit count, with version name/tag/asset such as `0.1.42`, `v0.1.42`, and `Music-0.1.42.apk`.
 
 One-time persistent signing secrets are required before publication. See [`android/RELEASING.md`](android/RELEASING.md) for the four secret names, key backup, upgrade implications, reruns and verification. Configure those secrets and push the project to `main` to activate publishing; local tests are separate from hosted release verification.
 

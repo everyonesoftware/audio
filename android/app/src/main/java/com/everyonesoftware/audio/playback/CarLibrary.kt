@@ -13,7 +13,7 @@ import com.everyonesoftware.audio.data.Song
 internal class CarLibrary(private val graph: AudioGraph) {
     data class Selection(val credentials: Credentials, val previous: ListeningSession?, val session: ListeningSession)
 
-    fun root(): MediaItem = folder(CarMediaIds.ROOT, "Audio")
+    fun root(): MediaItem = folder(CarMediaIds.ROOT, "Music")
 
     suspend fun children(parentId: String): List<MediaItem> {
         graph.bootstrap()
@@ -69,7 +69,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
 
     suspend fun resolve(mediaId: String): Selection {
         graph.bootstrap()
-        val id = requireNotNull(CarMediaIds.parse(mediaId)) { "Choose a song or shuffle action from Audio." }
+        val id = requireNotNull(CarMediaIds.parse(mediaId)) { "Choose a song or shuffle action from Music." }
         val credentials = credentials()
         val previous = graph.session.value
         require(id.connection == credentials.connection.id) { "The music account changed. Refresh playlists." }
@@ -80,7 +80,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
             }
             return Selection(credentials, previous, saved.copy(index = id.index!!, positionMs = 0))
         }
-        require(id.kind == "shuffle" || id.kind == "track") { "Choose a song or shuffle action from Audio." }
+        require(id.kind == "shuffle" || id.kind == "track") { "Choose a song or shuffle action from Music." }
         val playlist = playlists(credentials).firstOrNull { it.id == id.parent }
         requireNotNull(playlist) { "This playlist is unavailable. Refresh playlists." }
         val songs = graph.playlists.fetchContents(credentials, id.parent).songs
@@ -106,17 +106,17 @@ internal class CarLibrary(private val graph: AudioGraph) {
         graph.bootstrap()
         val credentials = credentials()
         val previous = graph.session.value
-        if (query.isBlank()) return Selection(credentials, previous, requireNotNull(previous) { "Choose a playlist in Audio first." })
+        if (query.isBlank()) return Selection(credentials, previous, requireNotNull(previous) { "Choose a playlist in Music first." })
         val matches = playlists(credentials).filter { it.name.contains(query.trim(), ignoreCase = true) }
         val exact = matches.filter { it.name.equals(query.trim(), ignoreCase = true) }
         val playlist = if (exact.isNotEmpty()) exact.singleOrNull() else matches.singleOrNull()
-        requireNotNull(playlist) { "Say an exact playlist name or choose a playlist in Audio." }
+        requireNotNull(playlist) { "Say an exact playlist name or choose a playlist in Music." }
         val songs = graph.playlists.fetchContents(credentials, playlist.id).songs
         checkCurrent(credentials)
         return Selection(credentials, previous, SessionRules.start(credentials.connection.id, playlist.id, playlist.name, songs))
     }
 
-    private fun credentials() = requireNotNull(graph.credentials.value) { "Open Audio on your phone and connect to Navidrome." }
+    private fun credentials() = requireNotNull(graph.credentials.value) { "Open Music on your phone and connect to Navidrome." }
 
     private fun checkCurrent(credentials: Credentials) {
         require(graph.credentials.value == credentials) { "The music account changed. Refresh playlists." }

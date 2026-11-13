@@ -129,7 +129,7 @@ class NavidromeClient(
         val token = MessageDigest.getInstance("MD5").digest((credentials.password + salt).toByteArray(Charsets.UTF_8)).hex()
         return builder.addQueryParameter("u", credentials.connection.username)
             .addQueryParameter("t", token).addQueryParameter("s", salt)
-            .addQueryParameter("v", "1.16.1").addQueryParameter("c", "EveryoneAudio").addQueryParameter("f", "json")
+            .addQueryParameter("v", "1.16.1").addQueryParameter("c", "EveryoneMusic").addQueryParameter("f", "json")
     }
     private suspend fun api(name: String, vararg parameters: Pair<String, String>): JsonObject {
         val builder = endpoint(name)

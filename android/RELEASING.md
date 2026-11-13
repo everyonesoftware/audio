@@ -1,4 +1,4 @@
-# APK releases and Git-count versions
+# Music APK releases and Git-count versions
 
 Workflow: `.github/workflows/android-release.yml`.
 
@@ -10,8 +10,8 @@ The workflow checks out full history, derives the version, installs Java 21 and 
 
 The resulting GitHub release contains:
 
-- `Audio-0.1.<count>.apk` — the signed, non-debuggable APK.
-- `Audio-0.1.<count>.apk.sha256` — its SHA-256 checksum.
+- `Music-0.1.<count>.apk` — the signed, non-debuggable APK.
+- `Music-0.1.<count>.apk.sha256` — its SHA-256 checksum.
 - `release.json` — exact source commit, Git count, version, APK filename, size and checksum.
 
 A 30-day workflow artifact also retains those three files. GitHub release assets do not use that artifact expiration policy. A new release is drafted, its uploaded bytes are downloaded and checked, then it is published and verified. Only a release for the current `main` tip is promoted to Latest. Publication is serialized; GitHub may coalesce intermediate pending publication jobs during a burst of pushes. The built artifacts remain available, and a workflow can be rerun if needed.
@@ -25,13 +25,15 @@ The sole build counter is `git rev-list --count HEAD` across the complete reacha
 | Android `versionCode` | Commit count | `42` |
 | Android `versionName` | `0.1.<count>` | `0.1.42` |
 | Release tag | `v<versionName>` | `v0.1.42` |
-| APK filename | `Audio-<versionName>.apk` | `Audio-0.1.42.apk` |
+| APK filename | `Music-<versionName>.apk` | `Music-0.1.42.apk` |
 
 CI passes that exact count to Gradle as `-PaudioCommitCount=<count>`, then checks the generated APK metadata against the same history before packaging. Local builds calculate the count from Git when no override is supplied. The override is useful for local build verification, not a second production counter. Shallow histories are rejected; use `fetch-depth: 0`. `github.run_number` is not used, so rerunning a workflow does not invent a new app version.
 
 Before this repository has its first commit, local debug builds retain `0.1.0` with Android code 1. Releases require a positive count. Do not rewrite published history or reset the counter: Android updates need increasing codes. Different branches can have identical counts, which is why automatic releases are restricted to `main`. A tag already pointing at another commit is an error, never silently overwritten.
 
 ## One-time signing setup
+
+Music is the renamed native Audio app, not a new application ID. Keep `com.everyonesoftware.audio`, the existing signing key/configuration (including `AUDIO_*` variables and `audio-release.jks` filenames), and local data identifiers unchanged to support existing-install updates. The display name and release APK filenames change; they do not require a new key or data reset.
 
 Configure the following signing secrets before the first hosted build. Until configured, the workflow deliberately fails with the missing secret names rather than publishing an unsigned APK or generating a new key each run.
 

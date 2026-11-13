@@ -52,12 +52,14 @@ class AudioScreensTest {
 
     @Test fun welcomeConnectOpensTheRealConnectionRoute() {
         render(AudioUiState(booting = false))
+        compose.onNodeWithText("WELCOME TO MUSIC").assertIsDisplayed()
         compose.onNodeWithText("Connect to Navidrome").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(listOf(Screen.CONNECT), actions.screens) }
     }
 
     @Test fun connectionStartsBlankAndPasswordUsesHiddenSemantics() {
         render(AudioUiState(booting = false, screen = Screen.CONNECT))
+        compose.onNodeWithText("Use your Navidrome account. You don’t need to create a Music account.").assertIsDisplayed()
         listOf("connect-server-url", "connect-username", "connect-password").forEach { tag ->
             compose.onNodeWithTag(tag).assertIsDisplayed()
                 .assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))

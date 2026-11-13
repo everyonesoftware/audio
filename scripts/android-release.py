@@ -44,7 +44,7 @@ def package(root, destination, metadata=None):
     source = metadata.parent / entry["outputFile"]
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
-    name = f"Audio-{info['version']}.apk"
+    name = f"Music-{info['version']}.apk"
     target = destination / name
     shutil.copy2(source, target)
     manifest = dict(info, apk=name, sha256=digest(target), bytes=target.stat().st_size)
@@ -58,7 +58,7 @@ def validate(directory, expected):
     manifest = json.loads((directory / "release.json").read_text(encoding="utf-8"))
     if any(manifest.get(key) != value for key, value in expected.items()):
         raise ValueError("Release metadata does not match the intended commit/version.")
-    name = f"Audio-{expected['version']}.apk"
+    name = f"Music-{expected['version']}.apk"
     if manifest.get("apk") != name:
         raise ValueError("Unexpected APK asset name.")
     apk = directory / name
@@ -139,7 +139,7 @@ def publish(root, directory, repository, run=None):
                  "Install the signed APK. SHA-256 and release metadata are attached.\n"
                  "Keep the same signing key for future updates. No offline downloads or Android Auto yet.")
         gh("release", "create", tag, "--repo", repository, "--target", expected["sha"], "--draft",
-           "--title", f"Audio {expected['version']}", "--notes", notes)
+           "--title", f"Music {expected['version']}", "--notes", notes)
         current = view()
     if current is None or not current["isDraft"] or current["targetCommitish"] != expected["sha"]:
         raise ValueError("The draft release does not target this exact commit.")

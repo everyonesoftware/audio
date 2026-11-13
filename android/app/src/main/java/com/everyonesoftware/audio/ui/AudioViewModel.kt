@@ -283,7 +283,7 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
         viewModelScope.launch {
             try { action(controller()) }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { current.update { it.copy(error = "The player could not connect. Reopen Audio and retry.") } }
+            catch (_: Exception) { current.update { it.copy(error = "The player could not connect. Reopen Music and retry.") } }
         }
     }
     override fun togglePlay() = playerCommand { if (it.playWhenReady) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); it.play() } }
