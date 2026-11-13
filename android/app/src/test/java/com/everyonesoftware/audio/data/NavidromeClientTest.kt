@@ -1,6 +1,17 @@
 package com.everyonesoftware.audio.data
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.EventListener
+import okio.Buffer
+import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicLong
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.mockwebserver.MockResponse
@@ -139,6 +150,134 @@ class NavidromeClientTest {
             server.enqueue(ok(",\"error\":{\"code\":40,\"message\":\"private\"}"))
             rejects<NavidromeException> { runBlocking { client(server).ping() } }
             Unit
+        }
+    }
+    private fun assertSafeArtworkError(error: NavidromeException) {
+        // Coroutine stacktrace recovery may copy a safe exception and attach its original.
+        // It must never attach an underlying transport exception or its signed URL.
+        var cause: Throwable? = error
+        while (cause != null) {
+            assertTrue(cause.javaClass.name, cause is NavidromeException)
+            assertEquals(error.message, cause.message)
+            assertFalse(cause.toString().contains("private-art"))
+            assertFalse(cause.toString().contains("secret"))
+            assertFalse(cause.toString().contains("http://"))
+            cause = cause.cause
+        }
+    }
+
+    @Test fun coverArtDownloadsBytesWithFreshEncodedAuthenticationAndNoStore() = runBlocking {
+        MockWebServer().use { server ->
+            val bytes = byteArrayOf(0, -1, 42, -128)
+            repeat(2) { server.enqueue(MockResponse().setBody(Buffer().write(bytes))) }
+            val client = client(server)
+            repeat(2) { assertArrayEquals(bytes, client.coverArt("art &/雪")) }
+            val requests = List(2) { server.takeRequest(2, TimeUnit.SECONDS)!! }
+            requests.forEach { request ->
+                val url = request.requestUrl!!
+                assertEquals("/music/rest/getCoverArt.view", url.encodedPath)
+                assertEquals("art &/雪", url.queryParameter("id"))
+                assertEquals("1024", url.queryParameter("size"))
+                assertEquals("a+b &雪", url.queryParameter("u"))
+                assertEquals("1.16.1", url.queryParameter("v"))
+                assertEquals("EveryoneAudio", url.queryParameter("c"))
+                assertNull(url.queryParameter("p"))
+                val salt = url.queryParameter("s")!!
+                val token = MessageDigest.getInstance("MD5").digest(("secret &雪" + salt).toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it.toInt() and 255) }
+                assertEquals(token, url.queryParameter("t"))
+                assertEquals("no-store", request.getHeader("Cache-Control"))
+            }
+            assertNotEquals(requests[0].requestUrl!!.queryParameter("s"), requests[1].requestUrl!!.queryParameter("s"))
+        }
+    }
+    @Test fun coverArtAcceptsExactlyTwoMiBWithKnownAndUnknownLength() = runBlocking {
+        MockWebServer().use { server ->
+            val bytes = ByteArray(2 * 1024 * 1024) { (it % 251).toByte() }
+            server.enqueue(MockResponse().setBody(Buffer().write(bytes)))
+            server.enqueue(MockResponse().setChunkedBody(Buffer().write(bytes), 8192))
+            val client = client(server)
+            repeat(2) { assertArrayEquals(bytes, client.coverArt("art")) }
+        }
+    }
+    @Test fun coverArtRejectsOversizedKnownAndUnknownLengthWithoutLeakingCauses() = runBlocking {
+        MockWebServer().use { server ->
+            val bytes = ByteArray(2 * 1024 * 1024 + 1)
+            server.enqueue(MockResponse().setBody(Buffer().write(bytes)))
+            server.enqueue(MockResponse().setChunkedBody(Buffer().write(bytes), 8192))
+            val client = client(server)
+            repeat(2) {
+                val error = rejects<NavidromeException> { runBlocking { client.coverArt("private-art") } }
+                assertSafeArtworkError(error)
+                assertFalse(error.toString().contains("private-art"))
+            }
+        }
+    }
+    @Test fun coverArtRejectsDeclaredOversizeBeforeConsumingBody() = runBlocking {
+        MockWebServer().use { server ->
+            // A huge declared body must fail on headers, not wait for body bytes/read timeout.
+            server.enqueue(MockResponse().setBody("x").setHeader("Content-Length", 2 * 1024 * 1024 + 1)
+                .setBodyDelay(2, TimeUnit.SECONDS))
+            withTimeout(1000) {
+                val error = rejects<NavidromeException> { client(server).coverArt("art") }
+                assertSafeArtworkError(error)
+            }
+        }
+    }
+    @Test fun coverArtRejectsStatusesAndDoesNotFollowRedirects() = runBlocking {
+        MockWebServer().use { server ->
+            val client = client(server)
+            listOf(302, 401, 403, 503).forEach { code ->
+                server.enqueue(MockResponse().setResponseCode(code).addHeader("Location", server.url("/leak"))
+                    .setBody("secret &雪 https://sensitive.example/?t=private-token"))
+                val error = rejects<NavidromeException> { runBlocking { client.coverArt("art") } }
+                assertSafeArtworkError(error)
+                assertFalse(error.toString().contains("secret"))
+                assertFalse(error.toString().contains("sensitive"))
+                assertFalse(error.toString().contains("private-token"))
+            }
+            assertEquals(4, server.requestCount)
+        }
+    }
+    @Test fun coverArtSanitizesTransportAndBodyReadFailures() = runBlocking {
+        MockWebServer().use { server ->
+            val http = OkHttpClient.Builder().addInterceptor { chain ->
+                throw IOException("private transport ${chain.request().url}")
+            }.build()
+            val client = NavidromeClient(credentials(server.url("/music/").toString()), http, allowLocalHttp = true)
+            val transport = rejects<NavidromeException> { runBlocking { client.coverArt("private-art") } }
+            assertSafeArtworkError(transport)
+            assertFalse(transport.toString().contains("private"))
+            assertFalse(transport.toString().contains("http"))
+
+            server.enqueue(MockResponse().setBody("private body").setHeader("Content-Length", 100)
+                .setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AT_END))
+            val body = rejects<NavidromeException> { runBlocking { client(server).coverArt("private-art") } }
+            assertSafeArtworkError(body)
+            assertFalse(body.toString().contains("private"))
+            assertFalse(body.toString().contains("http"))
+        }
+    }
+    @Test fun coverArtCancellationCancelsCallDuringBodyConsumptionAndUsesTenSecondTimeout() = runBlocking {
+        MockWebServer().use { server ->
+            val reading = CountDownLatch(1)
+            val cancelled = CountDownLatch(1)
+            val timeout = AtomicLong()
+            val http = OkHttpClient.Builder().eventListener(object : EventListener() {
+                override fun callStart(call: Call) { timeout.set(call.timeout().timeoutNanos()) }
+                override fun responseBodyStart(call: Call) { reading.countDown() }
+                override fun canceled(call: Call) { cancelled.countDown() }
+            }).build()
+            server.enqueue(MockResponse().setBody("x".repeat(100)).throttleBody(1, 200, TimeUnit.MILLISECONDS))
+            val client = NavidromeClient(credentials(server.url("/music/").toString()), http, allowLocalHttp = true)
+            val download = async { client.coverArt("art") }
+            try {
+                assertTrue(withContext(Dispatchers.IO) { reading.await(2, TimeUnit.SECONDS) })
+                withTimeout(1000) { download.cancelAndJoin() }
+                assertTrue(download.isCancelled)
+                assertTrue(cancelled.await(1, TimeUnit.SECONDS))
+                assertEquals(TimeUnit.SECONDS.toNanos(10), timeout.get())
+            } finally { download.cancelAndJoin() }
         }
     }
     @Test fun redirectsAreNotFollowed() = runBlocking {

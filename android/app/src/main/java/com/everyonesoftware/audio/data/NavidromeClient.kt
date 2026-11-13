@@ -23,6 +23,7 @@ class NavidromeClient(
         .cache(null).retryOnConnectionFailure(false)
         .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(45, TimeUnit.SECONDS).build()
+    private val artworkHttp = this.http.newBuilder().callTimeout(10, TimeUnit.SECONDS).build()
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun ping() { api("ping") }
@@ -65,6 +66,44 @@ class NavidromeClient(
     }
     /** Ephemeral URL; callers must disable Coil disk caching. */
     fun coverArtUri(id: String): String = authenticatedMediaUri(endpoint("getCoverArt").addQueryParameter("id", id).build().toString())
+
+    /** Bounded authenticated bytes; signed URLs never leave this download operation. */
+    suspend fun coverArt(id: String): ByteArray {
+        val request = Request.Builder().url(authenticated(endpoint("getCoverArt")
+            .addQueryParameter("id", id).addQueryParameter("size", "1024")).build())
+            .header("Cache-Control", "no-store").build()
+        return suspendCancellableCoroutine { continuation ->
+            val call = artworkHttp.newCall(request)
+            // Keep cancellation attached while the callback reads the body, not just until headers arrive.
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) continuation.resumeWithException(
+                        NavidromeException("Cannot reach the music server. Check your connection and retry."))
+                }
+                override fun onResponse(call: Call, response: Response) {
+                    val result = runCatching {
+                        try {
+                            response.use {
+                                if (!it.isSuccessful) throw NavidromeException(when (it.code) {
+                                    401, 403 -> "Authentication failed. Check your username and password."
+                                    in 300..399 -> "The server redirected this request. Check its configured HTTPS address."
+                                    else -> "The music server is unavailable. Retry shortly."
+                                })
+                                val body = it.body ?: throw invalidResponse()
+                                if (body.contentLength() > MAX_COVER_ART_BYTES) throw invalidResponse()
+                                val source = body.source()
+                                if (source.request(MAX_COVER_ART_BYTES + 1)) throw invalidResponse()
+                                source.readByteArray()
+                            }
+                        } catch (safe: NavidromeException) { throw safe }
+                        catch (_: Exception) { throw invalidResponse() }
+                    }
+                    if (continuation.isActive) continuation.resumeWith(result)
+                }
+            })
+        }
+    }
 
     private fun endpoint(name: String) = base.newBuilder().addPathSegment("rest").addPathSegment("$name.view")
     private fun authenticated(builder: HttpUrl.Builder): HttpUrl.Builder {
@@ -138,6 +177,7 @@ class NavidromeClient(
         else -> throw invalidResponse()
     }
     companion object {
+        internal const val MAX_COVER_ART_BYTES = 2L * 1024 * 1024
         private const val MAX_RESPONSE = 8L * 1024 * 1024
         private val random = SecureRandom()
         private fun ByteArray.hex() = joinToString("") { "%02x".format(it.toInt() and 255) }

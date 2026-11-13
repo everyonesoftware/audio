@@ -17,6 +17,7 @@ import com.google.common.util.concurrent.SettableFuture
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -67,6 +68,11 @@ class PlaybackService : MediaLibraryService() {
     private var storageError: String? = null
     private lateinit var carLibrary: CarLibrary
     private var selectionGeneration = 0L
+    private var artworkJob: Job? = null
+    private var artworkLoader: SessionArtwork? = null
+    private var artworkCredentials: Credentials? = null
+    private var artworkTarget: Pair<QueueBinding, String>? = null
+    private var artworkIndex = C.INDEX_UNSET
 
     private data class QueueKey(val connectionId: String, val playlistId: String, val ids: List<String>, val queueId: String)
     private data class QueueBinding(val key: QueueKey, val credentials: Credentials)
@@ -105,6 +111,9 @@ class PlaybackService : MediaLibraryService() {
                 override fun onEvents(player: Player, events: Player.Events) {
                     if (replacingQueue) return
                     publishSnapshot()
+                    if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED)) {
+                        refreshArtwork()
+                    }
                     if (events.containsAny(Player.EVENT_PLAY_WHEN_READY_CHANGED,
                             Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY,
                             Player.EVENT_REPEAT_MODE_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) {
@@ -268,6 +277,7 @@ class PlaybackService : MediaLibraryService() {
             // Each queue captures its own credentials. A late old request cannot borrow the newly
             // selected account's authentication, even when both accounts share the same server.
             val mediaItems = playbackItems(saved, next)
+            cancelArtwork()
             player.pause()
             player.stop()
             binding = next
@@ -285,7 +295,73 @@ class PlaybackService : MediaLibraryService() {
             replacingQueue = false
             publishSnapshot()
         }
+        refreshArtwork()
         librarySession?.notifyChildrenChanged(CarMediaIds.QUEUE, player.mediaItemCount, null)
+    }
+
+    private fun cancelArtwork() {
+        artworkJob?.cancel()
+        artworkJob = null
+        artworkTarget = null
+        artworkIndex = C.INDEX_UNSET
+    }
+
+    private fun refreshArtwork() {
+        val owner = binding ?: return
+        val item = player.currentMediaItem ?: return
+        if (graph.credentials.value != owner.credentials || graph.session.value?.key() != owner.key) return
+        val target = owner to item.mediaId
+        val index = player.currentMediaItemIndex
+        val coverId = graph.session.value?.queue?.getOrNull(index)?.coverArtId?.takeIf { it.isNotBlank() }
+        if (artworkTarget == target) {
+            // A controller can reapply this occurrence after the service already loaded it.
+            val cached = coverId?.let { artworkLoader?.cached(it) }
+            if (cached != null && (item.mediaMetadata.artworkData == null || item.mediaMetadata.artworkUri != cached.uri)) {
+                publishArtwork(index, item, cached)
+            }
+            return
+        }
+        artworkJob?.cancel()
+        artworkTarget = target // Set before metadata replacements can emit another player event.
+        val previousIndex = artworkIndex
+        artworkIndex = index
+        // Retain artwork only on the current item, not on every song in a long queue.
+        if (previousIndex in 0 until player.mediaItemCount && previousIndex != index) {
+            val previous = player.getMediaItemAt(previousIndex)
+            if (previous.mediaMetadata.artworkData != null || previous.mediaMetadata.artworkUri != null) {
+                player.replaceMediaItem(previousIndex, previous.buildUpon().setMediaMetadata(
+                    previous.mediaMetadata.buildUpon().setArtworkUri(null)
+                        .setArtworkData(null, MediaMetadata.PICTURE_TYPE_FRONT_COVER).build()).build())
+            }
+        }
+        if (artworkCredentials != owner.credentials) {
+            artworkLoader?.close()
+            artworkCredentials = owner.credentials
+            artworkLoader = SessionArtwork(NavidromeClient(owner.credentials, allowLocalHttp = BuildConfig.DEBUG), owner.credentials)
+        }
+        if (coverId == null) return
+        val loader = requireNotNull(artworkLoader)
+        artworkJob = serviceScope.launch {
+            // A transient cover failure gets one retry; music preparation never awaits artwork.
+            repeat(2) { attempt ->
+                if (attempt > 0) delay(1_000)
+                val artwork = try { loader.load(coverId) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { null }
+                if (artworkTarget != target || binding != owner || graph.credentials.value != owner.credentials ||
+                    graph.session.value?.key() != owner.key || player.currentMediaItem?.mediaId != item.mediaId) return@launch
+                if (artwork != null) {
+                    val current = player.currentMediaItem ?: return@launch
+                    publishArtwork(index, current, artwork)
+                    return@launch
+                }
+            }
+        }
+    }
+
+    private fun publishArtwork(index: Int, item: MediaItem, artwork: SessionArtworkImage) {
+        player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon()
+            .setArtworkUri(artwork.uri).setArtworkData(artwork.thumbnail, MediaMetadata.PICTURE_TYPE_FRONT_COVER).build()).build())
     }
 
     private fun playbackItems(saved: ListeningSession, owner: QueueBinding): List<MediaItem> {
@@ -338,6 +414,10 @@ class PlaybackService : MediaLibraryService() {
             }.build()
 
     private fun clearQueue() {
+        cancelArtwork()
+        artworkLoader?.close()
+        artworkLoader = null
+        artworkCredentials = null
         if (binding == null && player.mediaItemCount == 0) return
         val wasReplacing = replacingQueue
         replacingQueue = true
@@ -401,6 +481,10 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         val finalProgress = captureProgress()
+        cancelArtwork()
+        artworkLoader?.close()
+        artworkLoader = null
+        artworkCredentials = null
         serviceScope.cancel()
         val pendingWrites = persistenceScope.coroutineContext[Job]?.children?.toList().orEmpty()
         // Finish prior writes and a final snapshot without blocking Android's main thread.

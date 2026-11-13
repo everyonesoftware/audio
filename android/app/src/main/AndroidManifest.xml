@@ -27,6 +27,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- URI tokens are memory-only; every read also checks Android media-controller trust. -->
+        <provider
+            android:name=".playback.ArtworkContentProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="true"
+            android:grantUriPermissions="false" />
         <service
             android:name=".playback.PlaybackService"
             android:exported="true"
