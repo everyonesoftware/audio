@@ -224,7 +224,12 @@ private fun Playlists(state: AudioUiState, actions: AudioUiActions, artworkUrl: 
         Text(if (state.session == null) "Start with a playlist." else "What’s next?", style = MaterialTheme.typography.headlineMedium)
         OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 12.dp), label = { Text("Find a playlist") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
         ErrorMessage(state.error)
-        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().semantics { contentDescription = "Loading playlists" })
+        ErrorMessage(state.playlistError)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Hint(if (state.playlistsRefreshing) "Updating playlist counts…" else if (state.stalePlaylistIds.isNotEmpty()) "Some counts are last known" else "Playlist counts updated")
+            TextButton(actions::loadPlaylists, enabled = !state.loading && !state.playlistsRefreshing) { Text("Refresh") }
+        }
+        if (state.loading || state.playlistsRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth().semantics { contentDescription = "Loading playlists" })
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
             if (found.isEmpty() && !state.loading) item {
                 Hint(if (query.isBlank()) "No playlists available on this server." else "No playlists match. Try another name.")
@@ -235,10 +240,10 @@ private fun Playlists(state: AudioUiState, actions: AudioUiActions, artworkUrl: 
                     Artwork(playlist.coverArtId, artworkUrl, Modifier.size(58.dp))
                     Column(Modifier.weight(1f)) {
                         Text(playlist.name, style = MaterialTheme.typography.titleMedium)
-                        Hint("${playlist.songCount} songs")
+                        Hint("${playlist.songCount} songs" + if (playlist.id in state.stalePlaylistIds) " · last known" else "")
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FilledTonalIconButton({ actions.startPlaylist(playlist.id) }, Modifier.size(56.dp).testTag("playlist-shuffle-${playlist.id}"), enabled = !state.loading && playlist.songCount > 0) {
+                        FilledTonalIconButton({ actions.startPlaylist(playlist.id) }, Modifier.size(56.dp).testTag("playlist-shuffle-${playlist.id}"), enabled = !state.loading) {
                             Icon(Icons.Default.Shuffle, "Shuffle and play ${playlist.name}")
                         }
                         Text("Shuffle", style = MaterialTheme.typography.labelSmall)

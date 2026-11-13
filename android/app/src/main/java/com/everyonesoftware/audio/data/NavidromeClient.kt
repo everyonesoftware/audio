@@ -30,11 +30,16 @@ class NavidromeClient(
         MusicLibrary(it.required("id"), it.required("name"))
     }
     suspend fun playlists(): List<Playlist> = api("getPlaylists").obj("playlists").items("playlist").map {
-        Playlist(it.required("id"), it.required("name"), it.number("songCount"), it.text("coverArt"))
+        Playlist(it.required("id"), it.required("name"), it.number("songCount"), it.text("coverArt"), it.validUntil())
     }
-    suspend fun playlist(id: String): List<Song> = api("getPlaylist", "id" to id).obj("playlist").items("entry").map {
-        Song(it.required("id"), it.required("title"), it.text("artist") ?: "Unknown artist", it.text("album") ?: "",
-            it.text("coverArt"), it.number("duration"), it.number("userRating"))
+    suspend fun playlist(id: String): List<Song> = playlistContents(id).songs
+    suspend fun playlistContents(id: String): PlaylistContents {
+        val result = api("getPlaylist", "id" to id).obj("playlist")
+        val songs = result.items("entry").map {
+            Song(it.required("id"), it.required("title"), it.text("artist") ?: "Unknown artist", it.text("album") ?: "",
+                it.text("coverArt"), it.number("duration"), it.number("userRating"))
+        }
+        return PlaylistContents(songs, result.validUntil())
     }
     /** Explicit retries are safe: setRating is idempotent; never return an unverified requested value. */
     suspend fun rateSong(id: String, rating: Int): Int {
@@ -122,6 +127,10 @@ class NavidromeClient(
         else -> throw invalidResponse()
     }
     private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+    // Optional OpenSubsonic metadata: malformed/unsupported timestamps must not hide playable songs.
+    private fun JsonObject.validUntil(): Long? = text("validUntil")?.let {
+        try { java.time.Instant.parse(it).toEpochMilli() } catch (_: Exception) { null }
+    }
     private fun JsonObject.required(key: String): String = text(key)?.takeIf { it.isNotBlank() } ?: throw invalidResponse()
     private fun JsonObject.number(key: String): Int = when (val value = this[key]) {
         null, JsonNull -> 0

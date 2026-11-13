@@ -42,6 +42,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -200,6 +204,12 @@ class PlaybackService : MediaLibraryService() {
                 publishSnapshot()
                 persistProgress()
             }
+        }
+        serviceScope.launch {
+            graph.playlists.state.filter { !it.refreshing }
+                .map { catalog -> catalog.connectionId to catalog.playlists.map { Triple(it.id, it.name, it.songCount) } }
+                .distinctUntilChanged().drop(1)
+                .collect { (_, rows) -> librarySession?.notifyChildrenChanged(CarMediaIds.PLAYLISTS, rows.size, null) }
         }
     }
 

@@ -35,6 +35,11 @@ class MainActivity : ComponentActivity() {
         handleVoiceIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        model.onForeground()
+    }
+
     private fun handleVoiceIntent(intent: Intent) {
         if (intent.action != "android.media.action.MEDIA_PLAY_FROM_SEARCH") return
         model.playFromSearch(intent.getStringExtra(SearchManager.QUERY).orEmpty())

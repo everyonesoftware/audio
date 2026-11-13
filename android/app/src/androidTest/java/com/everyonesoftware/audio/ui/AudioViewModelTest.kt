@@ -91,4 +91,37 @@ class AudioViewModelTest {
             assertFalse(model.state.value.playing)
         } finally { onMain { owner.clear() }; graph.store.removeConnection(id) }
     }
+
+    @Test fun playlistRefreshUsesContentsNotStaleSummaryAndPreservesQueue() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val graph = AudioGraph(app)
+        val server = MockWebServer()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse = when {
+                request.path!!.contains("getPlaylists.view") -> ok(",\"playlists\":{\"playlist\":[{\"id\":\"smart\",\"name\":\"Rated\",\"songCount\":0}]}")
+                request.path!!.contains("getPlaylist.view") -> ok(",\"playlist\":{\"id\":\"smart\",\"name\":\"Rated\",\"entry\":[{\"id\":\"s1\",\"title\":\"One\"},{\"id\":\"s1\",\"title\":\"One again\"}]}")
+                else -> MockResponse().setResponseCode(404)
+            }
+        }
+        server.start()
+        val id = "vm-playlist-count-fixture"
+        val owner = ViewModelStore()
+        try {
+            graph.store.saveConnection(Credentials(Connection(id, "Fixture", server.url("/").toString(), "vm-count-user"), "test-only-password"))
+            graph.store.selectConnection(id)
+            val session = ListeningSession(id, "smart", "Rated", listOf(Song("old", "In progress", "Fixture")), positionMs = 1234L)
+            graph.store.saveSession(session)
+            lateinit var model: AudioViewModel
+            onMain { model = AudioViewModel(app, graph, false); owner.put("fixture", model) }
+            until { !model.state.value.booting }
+            onMain { model.loadPlaylists() }
+            until { model.state.value.playlists.singleOrNull()?.songCount == 2 && !model.state.value.playlistsRefreshing }
+            assertEquals(session, graph.session.value)
+            assertEquals(2, graph.store.cachedPlaylists(id).single().songCount)
+        } finally {
+            onMain { owner.clear() }
+            graph.store.removeConnection(id)
+            server.shutdown()
+        }
+    }
 }

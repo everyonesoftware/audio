@@ -49,6 +49,12 @@ class AndroidAutoTest {
     private val playlistsRequestStarted = java.util.concurrent.CountDownLatch(1)
     @Volatile private var unavailable = false
     @Volatile private var duplicatePlaylistNames = false
+    @Volatile private var otherPlaylist = false
+    @Volatile private var failOtherPlaylist = false
+    @Volatile private var otherPlaylistGate: java.util.concurrent.CountDownLatch? = null
+    private val otherPlaylistStarted = java.util.concurrent.CountDownLatch(1)
+    @Volatile private var fixtureCount = 3
+    @Volatile private var fixtureRating = 0
     @Volatile private var delayedPlaylist: java.util.concurrent.CountDownLatch? = null
     private val playlistRequestStarted = java.util.concurrent.CountDownLatch(1)
     private val changedParents = java.util.concurrent.ConcurrentLinkedQueue<String>()
@@ -69,6 +75,11 @@ class AndroidAutoTest {
                 if (unavailable) return MockResponse().setResponseCode(503)
                 val url = request.requestUrl ?: return MockResponse().setResponseCode(400)
                 if (url.queryParameter("u") != "auto-fixture" || url.queryParameter("t").isNullOrBlank()) return MockResponse().setResponseCode(401)
+                if (url.encodedPath.endsWith("/getPlaylist.view") && url.queryParameter("id") == "other") {
+                    otherPlaylistStarted.countDown()
+                    otherPlaylistGate?.let { check(it.await(15, TimeUnit.SECONDS)) }
+                    if (failOtherPlaylist) return MockResponse().setResponseCode(503)
+                }
                 if (url.encodedPath.endsWith("/getPlaylist.view")) delayedPlaylist?.let {
                     playlistRequestStarted.countDown()
                     check(it.await(15, TimeUnit.SECONDS))
@@ -79,10 +90,12 @@ class AndroidAutoTest {
                             playlistsRequestStarted.countDown()
                             check(it.await(15, TimeUnit.SECONDS))
                         }
-                        val extra = if (duplicatePlaylistNames) ",{\"id\":\"other\",\"name\":\"Drive fixture\",\"songCount\":3}" else ""
+                        val extra = if (duplicatePlaylistNames || otherPlaylist) ",{\"id\":\"other\",\"name\":\"${if (duplicatePlaylistNames) "Drive fixture" else "Other fixture"}\",\"songCount\":3}" else ""
                         ok("\"playlists\":{\"playlist\":[{\"id\":\"p/with:punctuation\",\"name\":\"Drive fixture\",\"songCount\":3}$extra]}")
                     }
-                    "getPlaylist.view" -> ok("\"playlist\":{\"entry\":[{\"id\":\"one\",\"title\":\"First song\",\"artist\":\"Fixture artist\",\"duration\":60},{\"id\":\"two\",\"title\":\"Second song\",\"artist\":\"Fixture artist\",\"duration\":60},{\"id\":\"one\",\"title\":\"First song\",\"artist\":\"Fixture artist\",\"duration\":60}]}")
+                    "getPlaylist.view" -> ok("\"playlist\":{\"entry\":[${fixtureSongs.take(fixtureCount).joinToString(",") { "{\"id\":\"${it.id}\",\"title\":\"${it.title}\",\"artist\":\"Fixture artist\",\"duration\":60}" }}]}")
+                    "setRating.view" -> { fixtureRating = url.queryParameter("rating")!!.toInt(); fixtureCount = 1; ok("\"fixture\":true") }
+                    "getSong.view" -> ok("\"song\":{\"id\":\"${url.queryParameter("id")}\",\"userRating\":$fixtureRating}")
                     "stream.view" -> MockResponse().setHeader("Content-Type", "audio/wav").setBody(Buffer().write(wav))
                     else -> MockResponse().setResponseCode(404)
                 }
@@ -111,6 +124,7 @@ class AndroidAutoTest {
     }
 
     @After fun cleanupFixture() {
+        otherPlaylistGate?.countDown()
         delayedPlaylists?.countDown()
         delayedPlaylist?.countDown()
         if (::browser.isInitialized) {
@@ -278,6 +292,51 @@ class AndroidAutoTest {
         until { changedParents.contains(folder.mediaId) }
         val queue = children(folder.mediaId)
         assertEquals(newer.queue.map { it.title }, queue.map { it.mediaMetadata.title })
+    }
+
+    @Test fun failingUnrelatedCountDoesNotBlockHealthyCarPlayback() {
+        otherPlaylist = true
+        failOtherPlaylist = true
+        val rows = children(CarMediaIds.PLAYLISTS)
+        assertEquals(2, rows.size)
+        val selected = rows.single { it.mediaMetadata.title == "Drive fixture" }
+        val args = Bundle().apply { putString(MediaConstants.EXTRA_KEY_MEDIA_ID, selected.mediaId) }
+        val result = onMain { browser.sendCustomCommand(SessionCommand(CarLibrary.SHUFFLE_PLAYLIST, Bundle.EMPTY), args) }.get(10, TimeUnit.SECONDS)
+        assertEquals(0, result.resultCode)
+        until { graph.playback.value.playing }
+    }
+
+    @Test fun slowUnrelatedDetailsDoNotBlockBrowseOrVoicePlayback() {
+        otherPlaylist = true
+        otherPlaylistGate = java.util.concurrent.CountDownLatch(1)
+        val rows = onMain { browser.getChildren(CarMediaIds.PLAYLISTS, 0, 100, null) }.get(5, TimeUnit.SECONDS)
+        assertEquals(0, rows.resultCode)
+        assertEquals(2, rows.value!!.size)
+        assertTrue(otherPlaylistStarted.await(5, TimeUnit.SECONDS))
+        val request = MediaItem.Builder().setRequestMetadata(MediaItem.RequestMetadata.Builder().setSearchQuery("Drive fixture").build()).build()
+        onMain { browser.setMediaItem(request); browser.prepare(); browser.play() }
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (!graph.playback.value.playing && System.nanoTime() < deadline) Thread.sleep(20)
+        assertTrue("Healthy voice selection must not wait for unrelated counts", graph.playback.value.playing)
+    }
+
+    @Test fun phoneRatingRefreshNotifiesSubscribedPlaylistRowsWithoutReplacingQueue() {
+        runBlocking { graph.playlists.refresh().join() }
+        assertEquals(0, onMain { browser.subscribe(CarMediaIds.PLAYLISTS, null) }.get(10, TimeUnit.SECONDS).resultCode)
+        until { changedParents.contains(CarMediaIds.PLAYLISTS) }
+        changedParents.clear()
+        val saved = graph.session.value!!
+        val owner = androidx.lifecycle.ViewModelStore()
+        lateinit var model: com.everyonesoftware.audio.ui.AudioViewModel
+        try {
+            onMain { model = com.everyonesoftware.audio.ui.AudioViewModel(app, graph, false); owner.put("rating-fixture", model) }
+            until { !model.state.value.booting }
+            onMain { model.rateSong(4) }
+            until { changedParents.contains(CarMediaIds.PLAYLISTS) }
+            assertEquals(saved.queueId, graph.session.value!!.queueId)
+            assertEquals(saved.queue.map { it.id }, graph.session.value!!.queue.map { it.id })
+            assertEquals("1 songs", children(CarMediaIds.PLAYLISTS).single().mediaMetadata.subtitle)
+        } finally { onMain { owner.clear() } }
     }
 
     @Test fun ambiguousVoiceRequestDoesNotPickAnArbitraryPlaylist() {

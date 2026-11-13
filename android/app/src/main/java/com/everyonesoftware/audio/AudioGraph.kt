@@ -5,7 +5,11 @@ import com.everyonesoftware.audio.data.AudioStore
 import com.everyonesoftware.audio.data.Credentials
 import com.everyonesoftware.audio.data.ListeningSession
 import com.everyonesoftware.audio.data.NavidromeClient
+import com.everyonesoftware.audio.data.PlaylistCatalog
 import com.everyonesoftware.audio.playback.SessionRules
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +19,13 @@ data class PlaybackSnapshot(val playing: Boolean = false, val positionMs: Long =
 
 class AudioGraph(context: Context) {
     val store = AudioStore(context)
+    private val libraryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val clientLock = Any()
+    private var cachedClient: Pair<Credentials, NavidromeClient>? = null
+    val playlists = PlaylistCatalog(libraryScope,
+        summaries = { clientFor(it).playlists() },
+        contents = { credentials, id -> clientFor(credentials).playlistContents(id) },
+        cached = store::cachedPlaylists, save = store::cachePlaylists)
     private val currentCredentials = MutableStateFlow<Credentials?>(null)
     private val currentSession = MutableStateFlow<ListeningSession?>(null)
     val credentials = currentCredentials.asStateFlow()
@@ -38,14 +49,16 @@ class AudioGraph(context: Context) {
         val credentials = store.credentials(id) ?: error("Reconnect this Navidrome account to continue.")
         val restored = store.session(id)?.takeIf { it.queue.isNotEmpty() }?.let(SessionRules::restore)
         store.selectConnection(id)
+        playlists.activate(credentials)
         currentCredentials.value = credentials
         currentSession.value = restored
         playback.value = PlaybackSnapshot(positionMs = restored?.positionMs ?: 0)
     }
-    fun client(): NavidromeClient = NavidromeClient(
-        requireNotNull(credentials.value) { "Connect to Navidrome first." },
-        allowLocalHttp = BuildConfig.DEBUG,
-    )
+    fun client(): NavidromeClient = clientFor(requireNotNull(credentials.value) { "Connect to Navidrome first." })
+    internal fun clientFor(credentials: Credentials): NavidromeClient = synchronized(clientLock) {
+        cachedClient?.takeIf { it.first == credentials }?.second
+            ?: NavidromeClient(credentials, allowLocalHttp = BuildConfig.DEBUG).also { cachedClient = credentials to it }
+    }
     suspend fun setSession(value: ListeningSession, expectedCredentials: Credentials? = null, expectedSession: ListeningSession? = null) = lock.withLock {
         require(value.connectionId == credentials.value?.connection?.id) { "The active connection changed. Choose the playlist again." }
         if (expectedCredentials != null) {

@@ -122,6 +122,15 @@ class AudioScreensTest {
         compose.runOnIdle { assertEquals(listOf("test-playlist"), actions.startedPlaylists) }
     }
 
+    @Test fun cachedZeroDoesNotPreventCheckingPlaylistContents() {
+        render(AudioUiState(
+            booting = false, screen = Screen.PLAYLISTS, connection = connection,
+            playlists = listOf(Playlist("test-playlist", "Test playlist", songCount = 0)),
+        ))
+        compose.onNodeWithTag("playlist-shuffle-test-playlist").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(listOf("test-playlist"), actions.startedPlaylists) }
+    }
+
     @Test fun playerTransportCallsParentActions() {
         render(playerState())
         compose.onNodeWithTag("player-toggle").assertIsDisplayed().performClick()

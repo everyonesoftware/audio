@@ -76,6 +76,22 @@ class NavidromeClientTest {
             assertEquals("/music/rest/getSong.view", server.takeRequest().requestUrl!!.encodedPath)
         }
     }
+    @Test fun parsesOptionalPlaylistValidityWithoutTrustingSummaryCounts() = runBlocking {
+        MockWebServer().use { server ->
+            val deadline = "2026-11-12T20:30:00.123Z"
+            server.enqueue(ok(",\"playlists\":{\"playlist\":[{\"id\":\"p\",\"name\":\"Rated\",\"songCount\":99,\"validUntil\":\"$deadline\"}]}"))
+            server.enqueue(ok(",\"playlist\":{\"songCount\":99,\"validUntil\":\"$deadline\",\"entry\":[{\"id\":\"s\",\"title\":\"Track\"}]}"))
+            server.enqueue(ok(",\"playlist\":{\"validUntil\":\"unsupported timestamp\"}"))
+            val client = client(server)
+            val expected = java.time.Instant.parse(deadline).toEpochMilli()
+            assertEquals(expected, client.playlists().single().validUntilMs)
+            val result = client.playlistContents("p")
+            assertEquals(expected, result.validUntilMs)
+            assertEquals(1, result.songs.size)
+            assertNull(client.playlistContents("p").validUntilMs)
+        }
+    }
+
     @Test fun ratingCanBeRetriedAfterUncertainReadback() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(ok()); server.enqueue(MockResponse().setResponseCode(503))

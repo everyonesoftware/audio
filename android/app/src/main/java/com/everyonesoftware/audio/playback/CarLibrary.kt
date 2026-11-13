@@ -5,7 +5,6 @@ import androidx.media3.common.MediaMetadata
 import com.everyonesoftware.audio.AudioGraph
 import com.everyonesoftware.audio.data.Credentials
 import com.everyonesoftware.audio.data.ListeningSession
-import com.everyonesoftware.audio.data.NavidromeClient
 import com.everyonesoftware.audio.data.Playlist
 import com.everyonesoftware.audio.data.Song
 
@@ -21,7 +20,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
         if (parentId == CarMediaIds.ROOT) return listOf(folder(CarMediaIds.PLAYLISTS, "Playlists"), folder(CarMediaIds.QUEUE, "Queue"))
         val credentials = credentials()
         if (parentId == CarMediaIds.PLAYLISTS) {
-            val playlists = playlists(credentials)
+            val playlists = playlists(credentials, reconcileCounts = true)
             val recent = graph.session.value?.playlistId
             return playlists.sortedByDescending { it.id == recent }.map { playlist ->
                 playlistItem(credentials.connection.id, playlist)
@@ -36,7 +35,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
         }
         val id = requireNotNull(CarMediaIds.parse(parentId)) { "Refresh playlists and retry." }
         require(id.kind == "playlist" && id.connection == credentials.connection.id) { "The music account changed. Refresh playlists." }
-        val songs = client(credentials).playlist(id.parent)
+        val songs = graph.playlists.fetchContents(credentials, id.parent).songs
         checkCurrent(credentials)
         return listOf(playable(CarMediaIds.shuffle(id.connection, id.parent), "Shuffle and play", "Start a new shuffled queue")) +
             songs.mapIndexed { index, song -> songItem(CarMediaIds.track(id.connection, id.parent, index, song.id), song) }
@@ -84,7 +83,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
         require(id.kind == "shuffle" || id.kind == "track") { "Choose a song or shuffle action from Audio." }
         val playlist = playlists(credentials).firstOrNull { it.id == id.parent }
         requireNotNull(playlist) { "This playlist is unavailable. Refresh playlists." }
-        val songs = client(credentials).playlist(id.parent)
+        val songs = graph.playlists.fetchContents(credentials, id.parent).songs
         checkCurrent(credentials)
         val shuffled = SessionRules.start(id.connection, playlist.id, playlist.name, songs)
         val selected = if (id.kind == "shuffle") shuffled else {
@@ -112,22 +111,22 @@ internal class CarLibrary(private val graph: AudioGraph) {
         val exact = matches.filter { it.name.equals(query.trim(), ignoreCase = true) }
         val playlist = if (exact.isNotEmpty()) exact.singleOrNull() else matches.singleOrNull()
         requireNotNull(playlist) { "Say an exact playlist name or choose a playlist in Audio." }
-        val songs = client(credentials).playlist(playlist.id)
+        val songs = graph.playlists.fetchContents(credentials, playlist.id).songs
         checkCurrent(credentials)
         return Selection(credentials, previous, SessionRules.start(credentials.connection.id, playlist.id, playlist.name, songs))
     }
 
     private fun credentials() = requireNotNull(graph.credentials.value) { "Open Audio on your phone and connect to Navidrome." }
-    private fun client(credentials: Credentials) = NavidromeClient(credentials, allowLocalHttp = com.everyonesoftware.audio.BuildConfig.DEBUG)
+
     private fun checkCurrent(credentials: Credentials) {
         require(graph.credentials.value == credentials) { "The music account changed. Refresh playlists." }
     }
-    private suspend fun playlists(credentials: Credentials): List<Playlist> {
-        val result = client(credentials).playlists()
+    private suspend fun playlists(credentials: Credentials, reconcileCounts: Boolean = false): List<Playlist> {
+        val catalog = graph.playlists.listing(credentials, reconcileCounts)
         checkCurrent(credentials)
-        graph.store.cachePlaylists(credentials.connection.id, result)
-        checkCurrent(credentials)
-        return result
+        require(catalog.connectionId == credentials.connection.id) { "The music account changed. Refresh playlists." }
+        if (catalog.listError != null) throw com.everyonesoftware.audio.data.NavidromeException(catalog.listError)
+        return catalog.playlists
     }
 
     companion object {

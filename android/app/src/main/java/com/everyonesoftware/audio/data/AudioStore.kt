@@ -107,10 +107,11 @@ class AudioStore(context: Context) {
     }
     suspend fun cachePlaylists(connectionId: String, playlists: List<Playlist>) = lock.withLock {
         requireConnection(connectionId)
-        dao.cachePlaylists(StoredPlaylists(connectionId, json.encodeToString(playlists)))
+        val payload = withContext(Dispatchers.Default) { json.encodeToString(playlists) }
+        dao.cachePlaylists(StoredPlaylists(connectionId, payload))
     }
     suspend fun cachedPlaylists(connectionId: String): List<Playlist> = lock.withLock {
-        dao.cachedPlaylists(connectionId)?.let { decode<List<Playlist>>(it.payload) } ?: emptyList()
+        dao.cachedPlaylists(connectionId)?.let { withContext(Dispatchers.Default) { decode<List<Playlist>>(it.payload) } } ?: emptyList()
     }
     private suspend fun requireConnection(id: String) {
         require(dao.connection(id) != null) { "This connection is unavailable. Reconnect to the server." }

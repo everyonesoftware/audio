@@ -59,6 +59,15 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
             graph.session.collect { session -> current.update { it.copy(session = session, positionMs = session?.positionMs ?: 0) } }
         }
         viewModelScope.launch {
+            graph.playlists.state.collect { catalog ->
+                current.update {
+                    if (it.connection?.id != catalog.connectionId) it else it.copy(
+                        playlists = catalog.playlists.sortedByDescending { playlist -> playlist.id == graph.session.value?.playlistId },
+                        playlistsRefreshing = catalog.refreshing, stalePlaylistIds = catalog.staleIds, playlistError = catalog.error)
+                }
+            }
+        }
+        viewModelScope.launch {
             graph.playback.collect { player -> current.update { it.copy(playing = player.playing,
                 positionMs = player.positionMs, durationMs = player.durationMs,
                 error = player.error ?: it.error) } }
@@ -71,7 +80,9 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
         val selected = connection?.let { graph.store.selectedLibraries(it.id) }.orEmpty()
         val connections = graph.store.connections()
         current.update { it.copy(connection = connection, connections = connections, playlists = playlists,
-            libraries = emptyList(), selectedLibraries = selected) }
+            libraries = emptyList(), selectedLibraries = selected,
+            playlistsRefreshing = graph.playlists.state.value.refreshing,
+            stalePlaylistIds = graph.playlists.state.value.staleIds, playlistError = graph.playlists.state.value.error) }
     }
 
     private fun work(block: suspend () -> Unit) {
@@ -151,24 +162,27 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
 
     override fun loadPlaylists() {
         current.update { it.copy(screen = Screen.PLAYLISTS) }
-        work {
-            val connectionId = graph.credentials.value?.connection?.id ?: error("Connect first.")
-            val playlists = graph.client().playlists()
-            graph.store.cachePlaylists(connectionId, playlists)
-            val recentId = graph.session.value?.playlistId
-            current.update { it.copy(playlists = playlists.sortedByDescending { playlist -> playlist.id == recentId }) }
+        viewModelScope.launch {
+            initialization.join()
+            graph.playlists.refresh()
         }
+    }
+
+    fun onForeground() {
+        if (!current.value.booting && current.value.screen == Screen.PLAYLISTS) loadPlaylists()
     }
 
     override fun startPlaylist(id: String) {
         if (current.value.loading) return
         work {
-            val connection = requireNotNull(graph.credentials.value?.connection) { "Connect first." }
+            val credentials = requireNotNull(graph.credentials.value) { "Connect first." }
+            val connection = credentials.connection
+            val previous = graph.session.value
             val playlist = current.value.playlists.firstOrNull { it.id == id } ?: error("Refresh playlists and retry.")
-            val songs = graph.client().playlist(id)
+            val songs = graph.playlists.fetchContents(credentials, id).songs
             val session = SessionRules.start(connection.id, playlist.id, playlist.name, songs)
             val controller = controller()
-            graph.setSession(session)
+            graph.setSession(session, credentials, previous)
             controller.play()
             current.update { it.copy(screen = Screen.PLAYER, ratingError = null) }
         }
@@ -227,12 +241,14 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
         val session = graph.session.value ?: return
         val song = session.queue.getOrNull(session.index) ?: return
         if (current.value.ratingBusy || rating !in 0..5) return
-        val client = graph.client()
+        val credentials = graph.credentials.value ?: return
+        val client = graph.clientFor(credentials)
         current.update { it.copy(ratingBusy = true, ratingError = null) }
         viewModelScope.launch {
             try {
                 val confirmed = client.rateSong(song.id, rating)
                 graph.applyRating(session.connectionId, song.id, confirmed)
+                graph.playlists.ratingChanged(credentials)
                 if (isRatingTarget(session.connectionId, song.id) && confirmed != rating) {
                     current.update { it.copy(ratingError = "The server reports a different rating. Retry if you want to change it.") }
                 }
@@ -263,6 +279,7 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
             restoreConnection()
             val session = graph.session.value
             current.update { it.copy(session = session, positionMs = session?.positionMs ?: 0, screen = if (session != null) Screen.PLAYER else Screen.PLAYLISTS) }
+            if (session == null) graph.playlists.refresh()
         }
     }
 
