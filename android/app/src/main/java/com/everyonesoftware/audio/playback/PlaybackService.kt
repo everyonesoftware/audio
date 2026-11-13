@@ -24,6 +24,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionResult
 import com.everyonesoftware.audio.AudioApplication
@@ -77,6 +78,9 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build().apply {
+            setSmallIcon(R.drawable.ic_audio_notification)
+        })
         graph = (application as AudioApplication).graph
         carLibrary = CarLibrary(graph)
         // Owner tags never cross the session wire. Sources capture queue-specific credentials,
@@ -162,6 +166,10 @@ class PlaybackService : MediaLibraryService() {
                 val commands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                     .remove(Player.COMMAND_CHANGE_MEDIA_ITEMS)
                     .remove(Player.COMMAND_SET_SHUFFLE_MODE)
+                    // Music uses track skips, not podcast-style ten-second seek buttons.
+                    // Keep in-track seeking available for the phone's progress slider.
+                    .remove(Player.COMMAND_SEEK_BACK)
+                    .remove(Player.COMMAND_SEEK_FORWARD)
                     .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()

@@ -415,6 +415,36 @@ class AndroidAutoTest {
         }
     }
 
+    @Test fun musicControlsAdvertiseTrackSkippingInsteadOfTenSecondSeeking() {
+        root()
+        until { onMain { browser.mediaItemCount == fixtureSongs.size } }
+        val saved = graph.session.value!!
+        onMain { browser.play() }
+        until { onMain { browser.isPlaying && browser.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) } }
+        val notifications = app.getSystemService(android.app.NotificationManager::class.java)
+        until { notifications.activeNotifications.any {
+            it.notification.smallIcon?.resId == com.everyonesoftware.audio.R.drawable.ic_audio_notification
+        } }
+        onMain {
+            assertTrue(browser.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS))
+            assertTrue(browser.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM))
+            assertFalse("Music controls must not offer podcast-style rewind", browser.isCommandAvailable(Player.COMMAND_SEEK_BACK))
+            assertFalse("Music controls must not offer podcast-style fast-forward", browser.isCommandAvailable(Player.COMMAND_SEEK_FORWARD))
+            // The phone's progress slider must keep working.
+            assertTrue(browser.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM))
+        }
+        onMain { browser.seekToNextMediaItem() }
+        until { graph.session.value?.index == 1 }
+        onMain { browser.seekToNextMediaItem() }
+        until { graph.session.value?.index == 2 }
+        onMain { browser.seekToPreviousMediaItem() }
+        until { graph.session.value?.index == 1 }
+        onMain { browser.pause() }
+        until { !graph.playback.value.playing }
+        assertEquals(saved.queueId, graph.session.value!!.queueId)
+        assertEquals(saved.queue, graph.session.value!!.queue)
+    }
+
     @Test fun legacyPlatformBrowserCanBrowseAndPlayFromMediaId() {
         val connected = java.util.concurrent.CountDownLatch(1)
         lateinit var legacy: android.media.browse.MediaBrowser
@@ -437,9 +467,36 @@ class AndroidAutoTest {
             val folders = legacyChildren(onMain { legacy.root })
             val playlists = legacyChildren(folders.single { it.description.title == "Playlists" }.mediaId!!)
             val shuffle = legacyChildren(playlists.single().mediaId!!).first()
-            onMain { android.media.session.MediaController(app, legacy.sessionToken).transportControls.playFromMediaId(shuffle.mediaId, null) }
+            val controller = onMain { android.media.session.MediaController(app, legacy.sessionToken) }
+            onMain { controller.transportControls.playFromMediaId(shuffle.mediaId, null) }
             until { graph.playback.value.playing }
             assertEquals(3, graph.session.value!!.queue.size)
+            val saved = graph.session.value!!
+            val state = onMain { requireNotNull(controller.playbackState) }
+            val actions = state.actions
+
+            assertTrue(actions and android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT != 0L)
+            assertTrue(actions and android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L)
+            assertEquals("No rewind action for the car to mistake for previous", 0L,
+                actions and android.media.session.PlaybackState.ACTION_REWIND)
+            assertEquals("No fast-forward action for the car to mistake for next", 0L,
+                actions and android.media.session.PlaybackState.ACTION_FAST_FORWARD)
+            onMain { controller.transportControls.skipToNext() }
+            until { graph.session.value?.index == 1 }
+            onMain { controller.transportControls.skipToNext() }
+            until { graph.session.value?.index == 2 }
+            // Legacy previous follows normal music behavior: restart after the threshold,
+            // otherwise select the previous occurrence. Start at zero to test track skipping.
+            onMain { controller.transportControls.seekTo(0) }
+            until { onMain { requireNotNull(controller.playbackState).position } < 1000 }
+            onMain { controller.transportControls.skipToPrevious() }
+            until { graph.session.value?.index == 1 }
+            onMain { controller.transportControls.pause() }
+            until { !graph.playback.value.playing }
+            onMain { controller.transportControls.play() }
+            until { graph.playback.value.playing }
+            assertEquals(saved.queueId, graph.session.value!!.queueId)
+            assertEquals(saved.queue, graph.session.value!!.queue)
         } finally { onMain { legacy.disconnect() } }
     }
 }

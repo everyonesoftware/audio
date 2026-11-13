@@ -1,0 +1,7 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- White alpha-only equalizer for notification small icons and car attribution. -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M3,8h3v8h-3zM8,2h3v20h-3zM13,5h3v14h-3zM18,10h3v4h-3z" />
+</vector>

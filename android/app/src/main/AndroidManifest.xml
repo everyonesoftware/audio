@@ -10,10 +10,13 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="false"
         android:label="Audio"
-        android:icon="@drawable/ic_audio"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.Audio"
         android:supportsRtl="true">
         <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <!-- Monochrome identity on car media cards, separate from the launcher tile. -->
+        <meta-data android:name="androidx.car.app.TintableAttributionIcon" android:resource="@drawable/ic_audio_notification" />
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
