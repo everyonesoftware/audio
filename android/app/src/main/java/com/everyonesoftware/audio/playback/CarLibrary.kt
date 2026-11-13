@@ -21,7 +21,7 @@ internal class CarLibrary(private val graph: AudioGraph) {
         val credentials = credentials()
         if (parentId == CarMediaIds.PLAYLISTS) {
             val playlists = playlists(credentials, reconcileCounts = true)
-            val recent = graph.session.value?.playlistId
+            val recent = graph.session.value?.takeIf { it.sourceType == "playlist" }?.playlistId
             return playlists.sortedByDescending { it.id == recent }.map { playlist ->
                 playlistItem(credentials.connection.id, playlist)
             }

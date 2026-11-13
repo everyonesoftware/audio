@@ -33,6 +33,24 @@ class NavidromeClient(
     suspend fun playlists(): List<Playlist> = api("getPlaylists").obj("playlists").items("playlist").map {
         Playlist(it.required("id"), it.required("name"), it.number("songCount"), it.text("coverArt"), it.validUntil())
     }
+    suspend fun albums(size: Int = 100, offset: Int = 0): List<Album> {
+        require(size in 1..500 && offset >= 0) { "Album page is out of range." }
+        return api("getAlbumList2", "type" to "alphabeticalByName", "size" to size.toString(), "offset" to offset.toString())
+            .obj("albumList2").items("album").map(::parseAlbum)
+    }
+    suspend fun album(id: String): AlbumContents {
+        val result = api("getAlbum", "id" to id).obj("album")
+        val album = parseAlbum(result)
+        if (album.id != id) throw invalidResponse()
+        val songs = result.items("song").map {
+            Song(it.required("id"), it.required("title"), it.text("artist") ?: album.artist, album.name,
+                it.text("coverArt") ?: album.coverArtId, it.number("duration"), it.number("userRating"))
+        }
+        return AlbumContents(album.copy(songCount = songs.size), songs)
+    }
+    private fun parseAlbum(value: JsonObject): Album = Album(
+        value.required("id"), value.required("name"), value.text("artist") ?: "Unknown artist",
+        value.text("coverArt"), value.number("songCount"), value.number("year"))
     suspend fun playlist(id: String): List<Song> = playlistContents(id).songs
     suspend fun playlistContents(id: String): PlaylistContents {
         val result = api("getPlaylist", "id" to id).obj("playlist")

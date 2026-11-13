@@ -77,6 +77,21 @@ class NavidromeClientTest {
             assertEquals("p &/雪", server.takeRequest().requestUrl!!.queryParameter("id"))
         }
     }
+    @Test fun parsesAlbumListAndAlbumTracks() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(ok(",\"albumList2\":{\"album\":[{\"id\":\"a1\",\"name\":\"Album One\",\"artist\":\"Artist\",\"coverArt\":\"art-a1\",\"songCount\":2,\"year\":2020}]}"))
+            server.enqueue(ok(",\"album\":{\"id\":\"a1\",\"name\":\"Album One\",\"artist\":\"Artist\",\"coverArt\":\"art-a1\",\"songCount\":2,\"year\":2020,\"song\":[{\"id\":\"s1\",\"title\":\"Track One\",\"artist\":\"Artist\",\"album\":\"Album One\",\"coverArt\":\"art-a1\",\"duration\":180},{\"id\":\"s2\",\"title\":\"Track Two\",\"artist\":\"Artist\",\"album\":\"Album One\",\"coverArt\":\"art-a1\",\"duration\":210}]}"))
+            val client = client(server)
+            assertEquals(listOf(Album("a1", "Album One", "Artist", "art-a1", 2, 2020)), client.albums())
+            assertEquals(listOf(Song("s1", "Track One", "Artist", "Album One", "art-a1", 180), Song("s2", "Track Two", "Artist", "Album One", "art-a1", 210)), client.album("a1").songs)
+            val listRequest = server.takeRequest().requestUrl!!
+            assertEquals("/music/rest/getAlbumList2.view", listRequest.encodedPath)
+            assertEquals("alphabeticalByName", listRequest.queryParameter("type"))
+            assertEquals("100", listRequest.queryParameter("size"))
+            assertEquals("0", listRequest.queryParameter("offset"))
+            assertEquals("a1", server.takeRequest().requestUrl!!.queryParameter("id"))
+        }
+    }
     @Test fun ratingReturnsAuthoritativeReadbackNotRequestedValue() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(ok()); server.enqueue(ok(",\"song\":{\"id\":\"s\",\"title\":\"T\",\"artist\":\"A\",\"userRating\":3}"))

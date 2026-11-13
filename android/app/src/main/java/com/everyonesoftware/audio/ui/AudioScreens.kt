@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -43,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.everyonesoftware.audio.data.Album
+import com.everyonesoftware.audio.data.Playlist
+import com.everyonesoftware.audio.data.Song
 
 /** This is the single owner of system/cutout and keyboard insets. */
 @Composable
@@ -65,13 +69,18 @@ fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?)
                         Screen.LIBRARIES -> Libraries(state, actions)
                         Screen.READY -> Ready(state, actions)
                         Screen.PLAYLISTS -> Playlists(state, actions, artworkUrl)
+                        Screen.SEARCH -> Search(state, actions, artworkUrl)
+                        Screen.ALBUM -> AlbumDetails(state, actions, artworkUrl)
                         Screen.PLAYER -> Player(state, actions, artworkUrl)
                         Screen.SETTINGS -> Settings(state, actions, home)
                         Screen.QUEUE -> Queue(state, actions, artworkUrl)
                     }
                 }
-                if (state.session?.queue?.getOrNull(state.session.index) != null && state.screen in listOf(Screen.SETTINGS, Screen.PLAYLISTS, Screen.QUEUE)) {
+                if (state.session?.queue?.getOrNull(state.session.index) != null && state.screen in listOf(Screen.SETTINGS, Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.QUEUE)) {
                     MiniPlayer(state, actions, artworkUrl)
+                }
+                if (state.connection != null && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE)) {
+                    MainNavigation(state.screen, actions)
                 }
             }
         }
@@ -94,6 +103,23 @@ private fun Header(title: String, eyebrow: String = "", back: (() -> Unit)? = nu
 private fun AudioIcon(icon: ImageVector, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, active: Boolean = false, onClick: () -> Unit) {
     IconButton(onClick, modifier.sizeIn(minWidth = 48.dp, minHeight = 52.dp), enabled = enabled) {
         Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+    }
+}
+
+@Composable
+private fun MainNavigation(screen: Screen, actions: AudioUiActions) {
+    val selected = when (screen) {
+        Screen.SEARCH -> Screen.SEARCH
+        Screen.SETTINGS -> Screen.SETTINGS
+        else -> Screen.PLAYLISTS
+    }
+    NavigationBar(modifier = Modifier.height(68.dp), containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+        NavigationBarItem(selected == Screen.PLAYLISTS, { actions.showScreen(Screen.PLAYLISTS) },
+            icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Library") }, modifier = Modifier.testTag("tab-library"))
+        NavigationBarItem(selected == Screen.SEARCH, { actions.showScreen(Screen.SEARCH) },
+            icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search") }, modifier = Modifier.testTag("tab-search"))
+        NavigationBarItem(selected == Screen.SETTINGS, { actions.showScreen(Screen.SETTINGS) },
+            icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") }, modifier = Modifier.testTag("tab-settings"))
     }
 }
 
@@ -217,37 +243,126 @@ private fun Artwork(id: String?, artworkUrl: (String?) -> String?, modifier: Mod
 
 @Composable
 private fun Playlists(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
-    var query by rememberSaveable(state.connection?.id) { mutableStateOf("") }
-    val found = state.playlists.filter { it.name.contains(query.trim(), ignoreCase = true) }
     Column(Modifier.fillMaxSize()) {
-        Header("Your playlists", state.connection?.name.orEmpty(), back = if (state.session != null) ({ actions.showScreen(Screen.PLAYER) }) else null, settings = { actions.showScreen(Screen.SETTINGS) })
-        Text(if (state.session == null) "Start with a playlist." else "What’s next?", style = MaterialTheme.typography.headlineMedium)
-        OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 12.dp), label = { Text("Find a playlist") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        Header("Library", state.connection?.name.orEmpty())
+        Surface(Modifier.fillMaxWidth().clickable { actions.showScreen(Screen.SEARCH) }, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+            Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Hint("Search playlists and albums", Modifier.padding(start = 10.dp))
+            }
+        }
         ErrorMessage(state.error)
         ErrorMessage(state.playlistError)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Hint(if (state.playlistsRefreshing) "Updating playlist counts…" else if (state.stalePlaylistIds.isNotEmpty()) "Some counts are last known" else "Playlist counts updated")
-            TextButton(actions::loadPlaylists, enabled = !state.loading && !state.playlistsRefreshing) { Text("Refresh") }
-        }
-        if (state.loading || state.playlistsRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth().semantics { contentDescription = "Loading playlists" })
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
-            if (found.isEmpty() && !state.loading) item {
-                Hint(if (query.isBlank()) "No playlists available on this server." else "No playlists match. Try another name.")
-                TextButton(actions::loadPlaylists, enabled = !state.loading) { Text("Refresh playlists") }
+        ErrorMessage(state.albumsError)
+        if (state.playlistsRefreshing || state.albumsRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Refreshing library" })
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Playlists", style = MaterialTheme.typography.titleLarge)
+                    TextButton(actions::loadPlaylists, enabled = !state.loading && !state.playlistsRefreshing) { Text("Refresh") }
+                }
+                if (state.playlists.isEmpty() && !state.playlistsRefreshing) Hint("No playlists available on this server.")
+                LazyRow(contentPadding = PaddingValues(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(state.playlists, key = { "playlist-${it.id}" }) { playlist ->
+                        PlaylistTile(playlist, playlist.id in state.stalePlaylistIds, artworkUrl, enabled = !state.loading) { actions.startPlaylist(playlist.id) }
+                    }
+                }
             }
-            items(found, key = { it.id }) { playlist ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 100.dp).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Artwork(playlist.coverArtId, artworkUrl, Modifier.size(58.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(playlist.name, style = MaterialTheme.typography.titleMedium)
-                        Hint("${playlist.songCount} songs" + if (playlist.id in state.stalePlaylistIds) " · last known" else "")
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FilledTonalIconButton({ actions.startPlaylist(playlist.id) }, Modifier.size(56.dp).testTag("playlist-shuffle-${playlist.id}"), enabled = !state.loading) {
-                            Icon(Icons.Default.Shuffle, "Shuffle and play ${playlist.name}")
-                        }
-                        Text("Shuffle", style = MaterialTheme.typography.labelSmall)
-                    }
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Albums", style = MaterialTheme.typography.titleLarge)
+                    if (state.albumsRefreshing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                }
+                if (state.albums.isEmpty() && !state.albumsRefreshing && state.albumsError == null) Hint("No albums available on this server.")
+                LazyRow(contentPadding = PaddingValues(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(state.albums, key = { "album-${it.id}" }) { album -> AlbumTile(album, artworkUrl) { actions.openAlbum(album.id) } }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistTile(playlist: Playlist, stale: Boolean, artworkUrl: (String?) -> String?, enabled: Boolean, onShuffle: () -> Unit) {
+    Column(Modifier.width(132.dp)) {
+        Box(Modifier.size(132.dp)) {
+            Artwork(playlist.coverArtId, artworkUrl, Modifier.fillMaxSize().clickable(enabled = enabled, onClick = onShuffle).testTag("playlist-card-${playlist.id}"))
+            FilledTonalIconButton(onShuffle, Modifier.align(Alignment.BottomEnd).padding(6.dp).size(42.dp).testTag("playlist-shuffle-${playlist.id}"), enabled = enabled) {
+                Icon(Icons.Default.Shuffle, "Shuffle and play ${playlist.name}")
+            }
+        }
+        Text(playlist.name, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Hint("${playlist.songCount} songs" + if (stale) " · last known" else "")
+    }
+}
+
+@Composable
+private fun AlbumTile(album: Album, artworkUrl: (String?) -> String?, onClick: () -> Unit) {
+    Column(Modifier.width(132.dp).clickable(onClick = onClick).testTag("album-card-${album.id}")) {
+        Artwork(album.coverArtId, artworkUrl, Modifier.size(132.dp))
+        Text(album.name, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Hint(album.artist + if (album.year > 0) " · ${album.year}" else "")
+    }
+}
+
+@Composable
+private fun Search(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
+    var query by rememberSaveable(state.connection?.id) { mutableStateOf("") }
+    val term = query.trim()
+    val playlists = state.playlists.filter { it.name.contains(term, ignoreCase = true) }
+    val albums = state.albums.filter { it.name.contains(term, ignoreCase = true) || it.artist.contains(term, ignoreCase = true) }
+    Column(Modifier.fillMaxSize()) {
+        Header("Search", state.connection?.name.orEmpty())
+        OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(bottom = 10.dp), label = { Text("Playlists and albums") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        ErrorMessage(state.albumsError)
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            if (term.isBlank()) item { Hint("Search your playlists and albums by name or artist.") }
+            if (playlists.isNotEmpty()) item { Text("Playlists", style = MaterialTheme.typography.titleLarge) }
+            items(playlists, key = { "search-playlist-${it.id}" }) { playlist ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).clickable { actions.startPlaylist(playlist.id) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Artwork(playlist.coverArtId, artworkUrl, Modifier.size(52.dp))
+                    Column(Modifier.weight(1f)) { Text(playlist.name, style = MaterialTheme.typography.titleMedium); Hint("${playlist.songCount} songs") }
+                    AudioIcon(Icons.Default.Shuffle, "Shuffle and play ${playlist.name}") { actions.startPlaylist(playlist.id) }
+                }
+                HorizontalDivider()
+            }
+            if (albums.isNotEmpty()) item { Text("Albums", style = MaterialTheme.typography.titleLarge) }
+            items(albums, key = { "search-album-${it.id}" }) { album ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).clickable { actions.openAlbum(album.id) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Artwork(album.coverArtId, artworkUrl, Modifier.size(52.dp))
+                    Column(Modifier.weight(1f)) { Text(album.name, style = MaterialTheme.typography.titleMedium); Hint(album.artist) }
+                    Icon(Icons.Default.ChevronRight, "Open ${album.name}")
+                }
+                HorizontalDivider()
+            }
+            if (term.isNotBlank() && playlists.isEmpty() && albums.isEmpty()) item { Hint("No playlists or albums match “$term”.") }
+        }
+    }
+}
+
+@Composable
+private fun AlbumDetails(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
+    val album = state.selectedAlbum
+    Column(Modifier.fillMaxSize()) {
+        Header(album?.name ?: "Album", album?.artist.orEmpty(), back = { actions.showScreen(Screen.PLAYLISTS) })
+        if (album != null) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
+                Artwork(album.coverArtId, artworkUrl, Modifier.size(220.dp))
+            }
+            Text(album.name, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Hint(album.artist + if (album.year > 0) " · ${album.year}" else "", Modifier.padding(top = 4.dp, bottom = 8.dp))
+            Primary(if (state.loading) "Starting…" else "Play album", Modifier.testTag("album-play"), enabled = !state.loading && !state.albumLoading && state.albumSongs.isNotEmpty()) {
+                actions.playAlbum(album.id)
+            }
+        }
+        if (state.albumLoading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
+        ErrorMessage(state.albumError)
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(top = 10.dp, bottom = 12.dp)) {
+            items(state.albumSongs, key = { it.id }) { song ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 62.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.MusicNote, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f)) { Text(song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis); Hint(song.artist) }
+                    Hint(timeLabel(song.durationSeconds * 1000L))
                 }
                 HorizontalDivider()
             }
@@ -272,7 +387,13 @@ private fun Player(state: AudioUiState, actions: AudioUiActions, artworkUrl: (St
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val scrollFallback = maxHeight < 580.dp || LocalDensity.current.fontScale > 1.3f
         Column(if (scrollFallback) Modifier.fillMaxSize().verticalScroll(rememberScrollState()) else Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Header(session.playlistName, "Listening to", settings = { actions.showScreen(Screen.SETTINGS) })
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(session.playlistName, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TextButton({ actions.showScreen(Screen.QUEUE) }, Modifier.testTag("player-queue")) {
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, null)
+                    Text("Queue", Modifier.padding(start = 6.dp))
+                }
+            }
             Box(if (scrollFallback) Modifier.fillMaxWidth().height(140.dp) else Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val side = minOf(maxHeight, maxWidth)
@@ -306,15 +427,7 @@ private fun Player(state: AudioUiState, actions: AudioUiActions, artworkUrl: (St
                 AudioIcon(Icons.Default.SkipNext, "Next track", Modifier.testTag("player-next"), onClick = actions::next)
                 AudioIcon(if (session.repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repeat", Modifier.semantics { stateDescription = when (session.repeatMode) { 1 -> "Repeat one"; 2 -> "Repeat all"; else -> "Off" } }, active = session.repeatMode != 0, onClick = actions::toggleRepeat)
             }
-            OutlinedButton({ actions.showScreen(Screen.PLAYLISTS) }, Modifier.fillMaxWidth().heightIn(min = 66.dp), shape = RoundedCornerShape(12.dp)) {
-                Icon(Icons.Default.LibraryMusic, null)
-                Column(Modifier.weight(1f).padding(start = 12.dp)) { Text("Change playlist", style = MaterialTheme.typography.titleMedium); Text("Choose, shuffle and play", style = MaterialTheme.typography.bodySmall) }
-                Icon(Icons.Default.KeyboardArrowDown, null)
-            }
-            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                TextButton({ actions.showScreen(Screen.QUEUE) }) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null); Text("Queue", Modifier.padding(start = 8.dp)) }
-                Text(if (state.playing) "PLAYING" else "READY TO RESUME", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Spacer(Modifier.height(16.dp))
             ErrorMessage(state.error)
         }
     }
@@ -329,18 +442,16 @@ private fun timeLabel(milliseconds: Long): String {
 @Composable
 private fun RatingDialog(title: String, artist: String, confirmed: Int, busy: Boolean, error: String?, attempted: Int?, onRate: (Int) -> Unit, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxWidth().padding(12.dp).widthIn(max = 420.dp).onPreviewKeyEvent { if (it.key == Key.Escape) { onClose(); true } else false }, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(Modifier.fillMaxWidth().padding(12.dp).widthIn(max = 420.dp).onPreviewKeyEvent { if (it.key == Key.Escape) { onClose(); true } else false }, shape = RoundedCornerShape(22.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Rate this song", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Hint(artist)
-                Hint("Your rating: ${if (confirmed == 0) "Not rated" else "$confirmed of 5 stars"}")
-                Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     (1..5).forEach { rating ->
-                        Surface(color = if (rating == confirmed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, if (rating == confirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)) {
-                            Column(Modifier.width(48.dp).heightIn(min = 80.dp).testTag("rating-$rating").selectable(selected = rating == confirmed, enabled = !busy, role = Role.RadioButton, onClick = { onRate(rating) }).semantics { contentDescription = "$rating ${if (rating == 1) "star" else "stars"}" }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                Icon(if (rating <= confirmed) Icons.Default.Star else Icons.Outlined.StarBorder, null, Modifier.size(28.dp), tint = if (rating <= confirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(rating.toString())
+                        Surface(Modifier.weight(1f), color = if (rating == confirmed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, if (rating == confirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)) {
+                            Box(Modifier.widthIn(min = 42.dp).heightIn(min = 68.dp).testTag("rating-$rating").selectable(selected = rating == confirmed, enabled = !busy, role = Role.RadioButton, onClick = { onRate(rating) }).semantics { contentDescription = "$rating ${if (rating == 1) "star" else "stars"}" }, contentAlignment = Alignment.Center) {
+                                Icon(if (rating <= confirmed) Icons.Default.Star else Icons.Outlined.StarBorder, null, Modifier.size(30.dp), tint = if (rating <= confirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -348,8 +459,6 @@ private fun RatingDialog(title: String, artist: String, confirmed: Int, busy: Bo
                 if (busy) Text("Saving rating…", Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodyMedium)
                 ErrorMessage(error)
                 if (error != null && attempted != null) TextButton({ onRate(attempted) }, enabled = !busy) { Text("Retry") }
-                Hint("Tap a star to save to Navidrome. Clear removes your song rating.")
-                HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     TextButton({ onRate(0) }, enabled = !busy && confirmed > 0) { Text("Clear rating", style = MaterialTheme.typography.bodyMedium) }
                     Button(onClose, Modifier.heightIn(min = 52.dp)) { Text("Done") }

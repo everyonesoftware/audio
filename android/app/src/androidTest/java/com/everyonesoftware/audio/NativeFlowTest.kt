@@ -138,7 +138,7 @@ class NativeFlowTest {
         compose.onNodeWithTag("player-rating").performClick()
         compose.onNodeWithTag("rating-4").performClick()
         compose.waitUntil(15_000) { graph.session.value?.queue?.getOrNull(graph.session.value!!.index)?.userRating == 4 }
-        compose.onNodeWithText("Your rating: 4 of 5 stars").assertIsDisplayed()
+        compose.onNodeWithTag("rating-4").assertIsSelected()
         compose.onNodeWithText("Done").performClick()
         capture("native-player")
         Assert.assertEquals(4, ratings[original.queue[original.index].id])

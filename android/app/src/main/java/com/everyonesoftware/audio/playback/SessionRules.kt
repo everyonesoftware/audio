@@ -6,10 +6,12 @@ import kotlin.random.Random
 
 /** Queue transitions are kept independent from Android so lifecycle rules are testable. */
 object SessionRules {
-    fun start(connectionId: String, playlistId: String, playlistName: String, songs: List<Song>, random: Random = Random.Default): ListeningSession {
-        require(songs.isNotEmpty()) { "This playlist has no playable songs." }
-        require(connectionId.isNotBlank() && playlistId.isNotBlank()) { "A playlist and connection are required." }
-        return ListeningSession(connectionId, playlistId, playlistName, songs.shuffled(random), queueId = java.util.UUID.randomUUID().toString())
+    fun start(connectionId: String, playlistId: String, playlistName: String, songs: List<Song>, random: Random = Random.Default, sourceType: String = "playlist", shuffle: Boolean = true): ListeningSession {
+        require(songs.isNotEmpty()) { "This collection has no playable songs." }
+        require(connectionId.isNotBlank() && playlistId.isNotBlank()) { "A collection and connection are required." }
+        require(sourceType in setOf("playlist", "album")) { "Unsupported playback source." }
+        return ListeningSession(connectionId, playlistId, playlistName, if (shuffle) songs.shuffled(random) else songs, shuffle = shuffle,
+            queueId = java.util.UUID.randomUUID().toString(), sourceType = sourceType)
     }
     fun restore(session: ListeningSession): ListeningSession {
         require(session.queue.isNotEmpty()) { "The saved queue is empty." }

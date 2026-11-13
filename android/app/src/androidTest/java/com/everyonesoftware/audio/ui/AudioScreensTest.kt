@@ -18,6 +18,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.everyonesoftware.audio.data.Connection
+import com.everyonesoftware.audio.data.Album
 import com.everyonesoftware.audio.data.ListeningSession
 import com.everyonesoftware.audio.data.MusicLibrary
 import com.everyonesoftware.audio.data.Playlist
@@ -131,6 +132,33 @@ class AudioScreensTest {
         compose.runOnIdle { assertEquals(listOf("test-playlist"), actions.startedPlaylists) }
     }
 
+    @Test fun libraryShowsPlaylistAndAlbumShelvesAndPersistentTabs() {
+        render(AudioUiState(
+            booting = false, screen = Screen.PLAYLISTS, connection = connection,
+            playlists = listOf(Playlist("test-playlist", "Test playlist", songCount = 3)),
+            albums = listOf(Album("test-album", "Test album", "Test artist", songCount = 2)),
+        ))
+        compose.onNodeWithText("Playlists").assertIsDisplayed()
+        compose.onNodeWithText("Albums").assertIsDisplayed()
+        compose.onNodeWithTag("playlist-shuffle-test-playlist").assertIsDisplayed()
+        compose.onNodeWithTag("album-card-test-album").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(listOf("test-album"), actions.openedAlbums) }
+        compose.onNodeWithTag("tab-library").assertIsDisplayed()
+        compose.onNodeWithTag("tab-search").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(Screen.SEARCH, actions.screens.last()) }
+    }
+
+    @Test fun albumDetailsStartsTheSelectedAlbumAndListsItsTracks() {
+        render(AudioUiState(
+            booting = false, screen = Screen.ALBUM, connection = connection,
+            selectedAlbum = Album("test-album", "Test album", "Test artist", songCount = 1),
+            albumSongs = listOf(song.copy(id = "album-track", title = "Album track")),
+        ))
+        compose.onNodeWithText("Album track").assertIsDisplayed()
+        compose.onNodeWithTag("album-play").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(listOf("test-album"), actions.playedAlbums) }
+    }
+
     @Test fun playerTransportCallsParentActions() {
         render(playerState())
         compose.onNodeWithTag("player-toggle").assertIsDisplayed().performClick()
@@ -145,6 +173,11 @@ class AudioScreensTest {
     @Test fun ratingModalHasFiveLargeRadioTargetsAndDoneClosesWithoutSaving() {
         render(playerState())
         compose.onNodeWithTag("player-rating").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("player-queue").assertIsDisplayed()
+        compose.onNodeWithTag("tab-library").assertIsDisplayed()
+        compose.onNodeWithText("Change playlist").assertDoesNotExist()
+        compose.onNodeWithText("READY TO RESUME").assertDoesNotExist()
+        compose.onNodeWithText("Tap a star to save to Navidrome. Clear removes your song rating.").assertDoesNotExist()
         (1..5).forEach { value ->
             compose.onNodeWithTag("rating-$value")
                 .assertIsDisplayed()
@@ -200,6 +233,8 @@ class AudioScreensTest {
         val screens = mutableListOf<Screen>()
         val connects = mutableListOf<ConnectCall>()
         val startedPlaylists = mutableListOf<String>()
+        val openedAlbums = mutableListOf<String>()
+        val playedAlbums = mutableListOf<String>()
         val ratings = mutableListOf<Int>()
         var librarySaves = 0
         var playToggles = 0
@@ -211,6 +246,9 @@ class AudioScreensTest {
         override fun setLibrary(id: String, selected: Boolean) = Unit
         override fun saveLibraries() { librarySaves++ }
         override fun loadPlaylists() = Unit
+        override fun loadAlbums() = Unit
+        override fun openAlbum(id: String) { openedAlbums += id }
+        override fun playAlbum(id: String) { playedAlbums += id }
         override fun startPlaylist(id: String) { startedPlaylists += id }
         override fun togglePlay() { playToggles++ }
         override fun next() { nextCalls++ }

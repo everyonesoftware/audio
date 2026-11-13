@@ -12,6 +12,7 @@ import com.everyonesoftware.audio.AudioApplication
 import com.everyonesoftware.audio.AudioGraph
 import com.everyonesoftware.audio.BuildConfig
 import com.everyonesoftware.audio.data.Connection
+import com.everyonesoftware.audio.data.AlbumContents
 import com.everyonesoftware.audio.data.Credentials
 import com.everyonesoftware.audio.data.NavidromeClient
 import com.everyonesoftware.audio.data.NavidromeException
@@ -35,6 +36,8 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     private val current = MutableStateFlow(AudioUiState())
     val state = current.asStateFlow()
     private var operation: Job? = null
+    private var albumsOperation: Job? = null
+    private var albumDetailOperation: Job? = null
     private val initialization: Job
     private var generation = 0L
     private var firstLibrarySetup = false
@@ -50,6 +53,7 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
                 val session = graph.session.value
                 current.update { it.copy(booting = false, session = session, positionMs = session?.positionMs ?: 0,
                     screen = when { session != null -> Screen.PLAYER; graph.credentials.value != null -> Screen.PLAYLISTS; else -> Screen.WELCOME }) }
+                if (graph.credentials.value != null) loadAlbums()
                 // Startup refresh must not cancel an explicit request received while restoring.
                 if (current.value.screen == Screen.PLAYLISTS && generation == 0L) loadPlaylists()
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -75,11 +79,13 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
     }
 
     private suspend fun restoreConnection() {
+        albumsOperation?.cancel()
+        albumDetailOperation?.cancel()
         val connection = graph.credentials.value?.connection
         val playlists = connection?.let { graph.store.cachedPlaylists(it.id) }.orEmpty()
         val selected = connection?.let { graph.store.selectedLibraries(it.id) }.orEmpty()
         val connections = graph.store.connections()
-        current.update { it.copy(connection = connection, connections = connections, playlists = playlists,
+        current.update { it.copy(connection = connection, connections = connections, playlists = playlists, albums = emptyList(), albumsError = null, selectedAlbum = null, albumSongs = emptyList(), albumError = null,
             libraries = emptyList(), selectedLibraries = selected,
             playlistsRefreshing = graph.playlists.state.value.refreshing,
             stalePlaylistIds = graph.playlists.state.value.staleIds, playlistError = graph.playlists.state.value.error) }
@@ -129,6 +135,11 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
         }
         when (screen) {
             Screen.PLAYLISTS -> loadPlaylists()
+            Screen.SEARCH -> {
+                current.update { it.copy(screen = screen, error = null) }
+                loadAlbums()
+            }
+            Screen.ALBUM -> current.update { it.copy(screen = screen, error = null) }
             Screen.LIBRARIES -> {
                 firstLibrarySetup = false
                 current.update { it.copy(screen = screen, error = null) }
@@ -162,9 +173,65 @@ class AudioViewModel @JvmOverloads constructor(application: Application, private
 
     override fun loadPlaylists() {
         current.update { it.copy(screen = Screen.PLAYLISTS) }
+        loadAlbums()
         viewModelScope.launch {
             initialization.join()
             graph.playlists.refresh()
+        }
+    }
+
+    override fun loadAlbums() {
+        val credentials = graph.credentials.value ?: return
+        if (current.value.albumsRefreshing && current.value.connection?.id == credentials.connection.id) return
+        albumsOperation?.cancel()
+        current.update { it.copy(albumsRefreshing = true, albumsError = null) }
+        albumsOperation = viewModelScope.launch {
+            try {
+                val albums = graph.clientFor(credentials).albums()
+                if (graph.credentials.value == credentials) current.update { it.copy(albums = albums, albumsError = null) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                if (graph.credentials.value == credentials) current.update { it.copy(albumsError = safeMessage(error)) }
+            } finally {
+                if (graph.credentials.value == credentials) current.update { it.copy(albumsRefreshing = false) }
+            }
+        }
+    }
+
+    override fun openAlbum(id: String) {
+        val credentials = graph.credentials.value ?: return
+        val album = current.value.albums.firstOrNull { it.id == id } ?: return
+        albumDetailOperation?.cancel()
+        current.update { it.copy(screen = Screen.ALBUM, selectedAlbum = album, albumSongs = emptyList(), albumLoading = true, albumError = null) }
+        albumDetailOperation = viewModelScope.launch {
+            try {
+                val result = graph.clientFor(credentials).album(id)
+                if (graph.credentials.value == credentials && current.value.selectedAlbum?.id == id) {
+                    current.update { it.copy(selectedAlbum = result.album, albumSongs = result.songs, albumLoading = false) }
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                if (graph.credentials.value == credentials && current.value.selectedAlbum?.id == id) {
+                    current.update { it.copy(albumLoading = false, albumError = safeMessage(error)) }
+                }
+            }
+        }
+    }
+
+    override fun playAlbum(id: String) {
+        if (current.value.loading) return
+        work {
+            val credentials = requireNotNull(graph.credentials.value) { "Connect first." }
+            val result = if (current.value.selectedAlbum?.id == id && current.value.albumSongs.isNotEmpty())
+                AlbumContents(requireNotNull(current.value.selectedAlbum), current.value.albumSongs)
+            else graph.clientFor(credentials).album(id)
+            val album = result.album
+            val previous = graph.session.value
+            val session = SessionRules.start(credentials.connection.id, album.id, album.name, result.songs, sourceType = "album", shuffle = false)
+            val controller = controller()
+            graph.setSession(session, credentials, previous)
+            controller.play()
+            current.update { it.copy(screen = Screen.PLAYER, selectedAlbum = album, albumSongs = result.songs, ratingError = null) }
         }
     }
 

@@ -27,6 +27,13 @@ class SessionRulesTest {
         assertEquals(0L, session.positionMs)
     }
 
+    @Test fun `album playback records album origin without changing queue semantics`() {
+        val session = SessionRules.start("server-a", "album-a", "Album A", songs, Random(7), sourceType = "album", shuffle = false)
+        assertEquals("album", session.sourceType)
+        assertFalse(session.shuffle)
+        assertEquals(songs, session.queue)
+    }
+
     @Test fun `restoring a paused session preserves exact shuffle order and position`() {
         val original = ListeningSession("server-a", "playlist-a", "Test playlist", songs.reversed(), 3, 42137L, true, 2)
         assertEquals(original, SessionRules.restore(original))

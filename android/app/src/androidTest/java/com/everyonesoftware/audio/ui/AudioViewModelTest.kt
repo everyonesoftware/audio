@@ -124,4 +124,40 @@ class AudioViewModelTest {
             server.shutdown()
         }
     }
+
+    @Test fun albumCatalogLoadsAndAlbumDetailIsScopedToTheActiveConnection() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val graph = AudioGraph(app)
+        val server = MockWebServer()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse = when {
+                request.path!!.contains("getAlbumList2.view") -> ok(",\"albumList2\":{\"album\":[{\"id\":\"album-1\",\"name\":\"Fixture Album\",\"artist\":\"Fixture Artist\",\"coverArt\":\"cover-1\",\"songCount\":1,\"year\":2024}]}")
+                request.path!!.contains("getAlbum.view") -> ok(",\"album\":{\"id\":\"album-1\",\"name\":\"Fixture Album\",\"artist\":\"Fixture Artist\",\"coverArt\":\"cover-1\",\"songCount\":1,\"year\":2024,\"song\":[{\"id\":\"track-1\",\"title\":\"Fixture Track\",\"artist\":\"Fixture Artist\",\"duration\":190}]}")
+                else -> MockResponse().setResponseCode(404)
+            }
+        }
+        server.start()
+        val id = "vm-album-fixture"
+        val owner = ViewModelStore()
+        try {
+            graph.store.saveConnection(Credentials(Connection(id, "Fixture", server.url("/").toString(), "vm-album-user"), "test-only-password"))
+            graph.store.selectConnection(id)
+            lateinit var model: AudioViewModel
+            onMain { model = AudioViewModel(app, graph, false); owner.put("fixture", model) }
+            until { !model.state.value.booting && model.state.value.albums.singleOrNull()?.id == "album-1" }
+            onMain { model.openAlbum("album-1") }
+            until { !model.state.value.albumLoading && model.state.value.albumSongs.isNotEmpty() }
+            assertEquals("Fixture Album", model.state.value.selectedAlbum?.name)
+            assertEquals("Fixture Track", model.state.value.albumSongs.single().title)
+            assertEquals(3, server.requestCount)
+            val paths = List(3) { server.takeRequest(2, java.util.concurrent.TimeUnit.SECONDS)!!.requestUrl!!.encodedPath }.toSet()
+            assertTrue(paths.contains("/rest/getPlaylists.view"))
+            assertTrue(paths.contains("/rest/getAlbumList2.view"))
+            assertTrue(paths.contains("/rest/getAlbum.view"))
+        } finally {
+            onMain { owner.clear() }
+            graph.store.removeConnection(id)
+            server.shutdown()
+        }
+    }
 }
