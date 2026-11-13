@@ -1,5 +1,8 @@
 package com.everyonesoftware.audio.ui
 
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -41,12 +44,16 @@ class AudioScreensTest {
     @get:Rule val compose = createComposeRule()
 
     private val actions = RecordingActions()
+    private lateinit var backDispatcher: OnBackPressedDispatcher
     private val connection = Connection("test-server", "Test server", "https://example.invalid", "test-user")
     private val song = Song("test-song", "Test song", "Test artist", userRating = 2)
     private val session = ListeningSession("test-server", "test-playlist", "Test playlist", listOf(song))
 
     private fun render(state: AudioUiState) {
-        compose.setContent { AudioTheme { AudioApp(state, actions, artworkUrl = { null }) } }
+        compose.setContent {
+            backDispatcher = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
+            AudioTheme { AudioApp(state, actions, artworkUrl = { null }) }
+        }
     }
 
     private fun playerState() = AudioUiState(
@@ -56,6 +63,40 @@ class AudioScreensTest {
         session = session,
         durationMs = 180_000L,
     )
+
+    @Test fun systemBackFromPlayerOpensLibraryWithoutPausingPlayback() {
+        render(playerState().copy(playing = true))
+        compose.runOnIdle { backDispatcher.onBackPressed() }
+        compose.runOnIdle {
+            assertEquals(listOf(Screen.PLAYLISTS), actions.screens)
+            assertEquals(0, actions.playToggles)
+        }
+    }
+
+    @Test fun systemBackFromLibraryFallsThroughToAndroid() {
+        render(playerState().copy(screen = Screen.PLAYLISTS))
+        compose.runOnIdle {
+            assertEquals(false, backDispatcher.hasEnabledCallbacks())
+            var fellThrough = false
+            val fallback = object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() { fellThrough = true }
+            }
+            backDispatcher.addCallback(fallback)
+            try {
+                backDispatcher.onBackPressed()
+                assertTrue(fellThrough)
+                assertTrue(actions.screens.isEmpty())
+            } finally {
+                fallback.remove()
+            }
+        }
+    }
+
+    @Test fun systemBackFromQueueStillOpensPlayer() {
+        render(playerState().copy(screen = Screen.QUEUE))
+        compose.runOnIdle { backDispatcher.onBackPressed() }
+        compose.runOnIdle { assertEquals(listOf(Screen.PLAYER), actions.screens) }
+    }
 
     @Test fun welcomeConnectOpensTheRealConnectionRoute() {
         render(AudioUiState(booting = false))

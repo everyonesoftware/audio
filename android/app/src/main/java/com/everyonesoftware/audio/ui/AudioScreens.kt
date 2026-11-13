@@ -53,10 +53,11 @@ import com.everyonesoftware.audio.data.Song
 fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
     val home = if (state.session != null) Screen.PLAYER else if (state.connection != null) Screen.PLAYLISTS else Screen.WELCOME
     val showNavigation = (state.connection != null || state.screen == Screen.UPDATES) && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE, Screen.UPDATES)
-    BackHandler(enabled = state.screen != Screen.WELCOME && state.screen != Screen.PLAYER) {
+    BackHandler(enabled = state.screen != Screen.WELCOME && state.screen != Screen.PLAYLISTS) {
         actions.showScreen(when (state.screen) {
             Screen.UPDATES -> state.updatesReturnScreen
             Screen.QUEUE -> Screen.PLAYER
+            Screen.PLAYER -> Screen.PLAYLISTS
             else -> home
         })
     }
