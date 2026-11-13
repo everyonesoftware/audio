@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.Lifecycle
@@ -110,6 +112,8 @@ class NativeFlowTest {
             return
         }
         val baseUrl = server.url("/").toString()
+        // A standalone cold run can still be restoring when the activity first becomes idle.
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Connect to Navidrome").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Connect to Navidrome").assertIsDisplayed()
         capture("native-welcome")
         compose.onNodeWithText("Connect to Navidrome").performClick()
@@ -166,6 +170,28 @@ class NativeFlowTest {
         }
         Assert.assertTrue(requests.any { it.requestUrl?.encodedPath?.endsWith("/setRating.view") == true })
         Assert.assertTrue(requests.any { it.requestUrl?.encodedPath?.endsWith("/getSong.view") == true })
+        // Exercise the production edge-to-edge activity, including its real system insets.
+        compose.onNodeWithTag("tab-library").performClick()
+        compose.onNodeWithTag("mini-player-toggle").assertIsDisplayed()
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val navigation = compose.onNodeWithTag("bottom-navigation").fetchSemanticsNode().boundsInRoot
+        val mini = compose.onNodeWithTag("mini-player").fetchSemanticsNode().boundsInRoot
+        Assert.assertEquals(root.left, navigation.left, 1f)
+        Assert.assertEquals(root.right, navigation.right, 1f)
+        Assert.assertEquals(root.bottom, navigation.bottom, 1f)
+        Assert.assertEquals(mini.bottom, navigation.top, 1f)
+        val pixels = compose.onRoot().captureToImage().toPixelMap()
+        val edgeX = (root.width - 2).toInt()
+        Assert.assertEquals(Color(0xFF354239), pixels[edgeX, mini.center.y.toInt()])
+        Assert.assertEquals(Color(0xFF262E29), pixels[edgeX, (root.height - 2).toInt()])
+        capture("native-tonal-library")
+        compose.onNodeWithTag("mini-player-toggle").performClick()
+        compose.waitUntil(10_000) { graph.playback.value.playing }
+        compose.onNodeWithTag("mini-player-toggle").performClick()
+        compose.waitUntil(10_000) { !graph.playback.value.playing }
+        compose.onNodeWithText("Fixture ${original.queue[original.index].id}").performClick()
+        compose.onNodeWithTag("player-toggle").assertIsDisplayed()
+        capture("native-tonal-player")
         if (preserveFixture) {
             java.io.File(app.getExternalFilesDir(null), "evidence/expected-session.json")
                 .writeText(Json.encodeToString(graph.session.value!!))

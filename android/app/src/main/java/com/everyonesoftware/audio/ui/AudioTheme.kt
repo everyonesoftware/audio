@@ -16,6 +16,7 @@ private val AudioColors = darkColorScheme(
     secondary = Color(0xFFAAB4A9), onSecondary = Color(0xFF1C211F),
     background = Color(0xFF1C211F), onBackground = Color(0xFFEDF0E9),
     surface = Color(0xFF262E29), onSurface = Color(0xFFEDF0E9),
+    surfaceContainerHigh = Color(0xFF354239), outlineVariant = Color(0xFF4B5A4E),
     surfaceVariant = Color(0xFF323E35), onSurfaceVariant = Color(0xFFAAB4A9),
     outline = Color(0xFF3A443D), error = Color(0xFFEFB5A3), onError = Color(0xFF352019),
 )

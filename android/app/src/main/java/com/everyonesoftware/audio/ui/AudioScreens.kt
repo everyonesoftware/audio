@@ -52,17 +52,20 @@ import com.everyonesoftware.audio.data.Song
 @Composable
 fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
     val home = if (state.session != null) Screen.PLAYER else if (state.connection != null) Screen.PLAYLISTS else Screen.WELCOME
+    val showNavigation = state.connection != null && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE)
     BackHandler(enabled = state.screen != Screen.WELCOME && state.screen != Screen.PLAYER) {
         actions.showScreen(if (state.screen == Screen.QUEUE) Screen.PLAYER else home)
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(horizontal = 18.dp)) {
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).imePadding()) {
             if (state.booting) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(Modifier.semantics { contentDescription = "Restoring your listening session" })
                 }
             } else {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
+                Box(Modifier.weight(1f).fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(if (showNavigation) WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                    .padding(horizontal = 18.dp)) {
                     when (state.screen) {
                         Screen.WELCOME -> Welcome(actions)
                         Screen.CONNECT -> Connect(state, actions, home)
@@ -79,7 +82,7 @@ fun AudioApp(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?)
                 if (state.session?.queue?.getOrNull(state.session.index) != null && state.screen in listOf(Screen.SETTINGS, Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.QUEUE)) {
                     MiniPlayer(state, actions, artworkUrl)
                 }
-                if (state.connection != null && state.screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.PLAYER, Screen.SETTINGS, Screen.QUEUE)) {
+                if (showNavigation) {
                     MainNavigation(state.screen, actions)
                 }
             }
@@ -113,13 +116,18 @@ private fun MainNavigation(screen: Screen, actions: AudioUiActions) {
         Screen.SETTINGS -> Screen.SETTINGS
         else -> Screen.PLAYLISTS
     }
-    NavigationBar(modifier = Modifier.height(68.dp), containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-        NavigationBarItem(selected == Screen.PLAYLISTS, { actions.showScreen(Screen.PLAYLISTS) },
-            icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Library") }, modifier = Modifier.testTag("tab-library"))
-        NavigationBarItem(selected == Screen.SEARCH, { actions.showScreen(Screen.SEARCH) },
-            icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search") }, modifier = Modifier.testTag("tab-search"))
-        NavigationBarItem(selected == Screen.SETTINGS, { actions.showScreen(Screen.SETTINGS) },
-            icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") }, modifier = Modifier.testTag("tab-settings"))
+    // Paint behind system navigation, but keep tab targets inside the safe drawing area.
+    Surface(Modifier.fillMaxWidth().testTag("bottom-navigation"), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+            NavigationBar(modifier = Modifier.fillMaxWidth().height(68.dp), containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
+                NavigationBarItem(selected == Screen.PLAYLISTS, { actions.showScreen(Screen.PLAYLISTS) },
+                    icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Library") }, modifier = Modifier.testTag("tab-library"))
+                NavigationBarItem(selected == Screen.SEARCH, { actions.showScreen(Screen.SEARCH) },
+                    icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search") }, modifier = Modifier.testTag("tab-search"))
+                NavigationBarItem(selected == Screen.SETTINGS, { actions.showScreen(Screen.SETTINGS) },
+                    icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") }, modifier = Modifier.testTag("tab-settings"))
+            }
+        }
     }
 }
 
@@ -538,13 +546,16 @@ private fun Queue(state: AudioUiState, actions: AudioUiActions, artworkUrl: (Str
 private fun MiniPlayer(state: AudioUiState, actions: AudioUiActions, artworkUrl: (String?) -> String?) {
     val session = state.session ?: return
     val song = session.queue.getOrNull(session.index) ?: return
-    Surface(color = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 74.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "Open full player") { actions.showScreen(Screen.PLAYER) }.padding(4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Artwork(song.coverArtId, artworkUrl, Modifier.size(52.dp))
-                Column(Modifier.weight(1f)) { Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(session.playlistName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    Surface(Modifier.fillMaxWidth().testTag("mini-player"), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column {
+            Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).heightIn(min = 74.dp).padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "Open full player") { actions.showScreen(Screen.PLAYER) }.padding(4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Artwork(song.coverArtId, artworkUrl, Modifier.size(52.dp))
+                    Column(Modifier.weight(1f)) { Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(session.playlistName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
+                AudioIcon(if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playing) "Pause" else "Resume playback", Modifier.testTag("mini-player-toggle"), onClick = actions::togglePlay)
             }
-            AudioIcon(if (state.playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (state.playing) "Pause" else "Resume playback", onClick = actions::togglePlay)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }

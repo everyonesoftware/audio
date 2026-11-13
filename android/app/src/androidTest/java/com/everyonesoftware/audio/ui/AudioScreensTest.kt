@@ -14,6 +14,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,6 +30,7 @@ import com.everyonesoftware.audio.data.MusicLibrary
 import com.everyonesoftware.audio.data.Playlist
 import com.everyonesoftware.audio.data.Song
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -148,6 +155,59 @@ class AudioScreensTest {
         compose.onNodeWithTag("tab-library").assertIsDisplayed()
         compose.onNodeWithTag("tab-search").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(Screen.SEARCH, actions.screens.last()) }
+    }
+
+    @Test fun bottomChromeSpansWidthAndUsesApprovedTonalSurfacesAcrossScreens() {
+        val state = mutableStateOf(playerState().copy(screen = Screen.PLAYLISTS))
+        compose.setContent { AudioTheme { AudioApp(state.value, actions, artworkUrl = { null }) } }
+        for (screen in listOf(Screen.PLAYLISTS, Screen.SEARCH, Screen.ALBUM, Screen.QUEUE, Screen.SETTINGS, Screen.PLAYER)) {
+            compose.runOnIdle { state.value = state.value.copy(screen = screen) }
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            val first = compose.onNodeWithTag("tab-library").fetchSemanticsNode().boundsInRoot
+            val last = compose.onNodeWithTag("tab-settings").fetchSemanticsNode().boundsInRoot
+            assertEquals("$screen: no left tab gutter", root.left, first.left, 1f)
+            assertEquals("$screen: no right tab gutter", root.right, last.right, 1f)
+            val navigation = compose.onNodeWithTag("bottom-navigation").fetchSemanticsNode().boundsInRoot
+            assertEquals("$screen: navigation reaches the bottom", root.bottom, navigation.bottom, 1f)
+            val pixels = compose.onRoot().captureToImage().toPixelMap()
+            val edgeX = (root.width - 2).toInt()
+            assertEquals("$screen: darker tabs", Color(0xFF262E29), pixels[edgeX, first.center.y.toInt()])
+            // The generic Compose test activity has its own three-button contrast scrim.
+            // NativeFlowTest checks the inset pixels with MainActivity's real dark system-bar style.
+            if (screen == Screen.PLAYER) {
+                compose.onNodeWithTag("mini-player").assertDoesNotExist()
+            } else {
+                val mini = compose.onNodeWithTag("mini-player").fetchSemanticsNode().boundsInRoot
+                assertEquals("$screen: full-width mini-player", root.width, mini.width, 1f)
+                assertEquals("$screen: mini-player touches tabs", mini.bottom, navigation.top, 1f)
+                assertEquals("$screen: lighter player", Color(0xFF354239), pixels[edgeX, mini.center.y.toInt()])
+                compose.onNodeWithTag("mini-player-toggle").assertIsDisplayed().performClick()
+            }
+        }
+        compose.runOnIdle { assertEquals(5, actions.playToggles) }
+        assertTrue(actions.screens.isEmpty())
+    }
+
+    @Test fun tonalMiniPlayerOpensFullPlayerAndCapturesLibraryAndPlayer() {
+        val state = mutableStateOf(playerState().copy(
+            screen = Screen.PLAYLISTS,
+            playlists = listOf(Playlist("test-playlist", "Test playlist", songCount = 3)),
+            albums = listOf(Album("test-album", "Test album", "Test artist", songCount = 2)),
+        ))
+        compose.setContent { AudioTheme { AudioApp(state.value, actions, artworkUrl = { null }) } }
+        for (screen in listOf(Screen.PLAYLISTS, Screen.PLAYER)) {
+            compose.runOnIdle { state.value = state.value.copy(screen = screen) }
+            compose.waitForIdle()
+            val image = compose.onRoot().captureToImage().asAndroidBitmap()
+            val directory = java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "evidence").apply { mkdirs() }
+            java.io.File(directory, "tonal-${screen.name.lowercase()}.png").outputStream().use {
+                assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+            image.recycle()
+        }
+        compose.runOnIdle { state.value = state.value.copy(screen = Screen.PLAYLISTS) }
+        compose.onNodeWithText("Test song").performClick()
+        compose.runOnIdle { assertEquals(listOf(Screen.PLAYER), actions.screens) }
     }
 
     @Test fun albumDetailsStartsTheSelectedAlbumAndListsItsTracks() {
