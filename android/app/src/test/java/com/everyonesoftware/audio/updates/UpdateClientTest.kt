@@ -13,7 +13,7 @@ import org.junit.Test
 class UpdateClientTest {
     private val payload = "signed apk fixture".toByteArray()
     private val hash = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { "%02x".format(it) }
-    private val base = "https://github.com/everyonesoftware/audio/releases/download/v0.1.42/"
+    private val base = "https://github.com/everyonesoftware/music/releases/download/v0.1.42/"
     private fun manifest() = """{"count":42,"version":"0.1.42","tag":"v0.1.42","sha":"${"a".repeat(40)}","apk":"Music-0.1.42.apk","bytes":${payload.size},"sha256":"$hash"}"""
     private fun metadata(draft: Boolean = false, prerelease: Boolean = false) = """{"tag_name":"v0.1.42","draft":$draft,"prerelease":$prerelease,"published_at":"2026-01-01T00:00:00Z","body":"Release notes","assets":[{"name":"release.json","browser_download_url":"${base}release.json"},{"name":"Music-0.1.42.apk","browser_download_url":"${base}Music-0.1.42.apk","size":${payload.size}}]}"""
     private fun client(server: MockWebServer) = UpdateClient(UpdateTestConfig(server.url("/")))
@@ -40,9 +40,9 @@ class UpdateClientTest {
         MockWebServer().use { server ->
             val found = release(server)
             assertEquals(UpdateRelease(42, "0.1.42", "Music-0.1.42.apk", payload.size.toLong(), hash, "${base}Music-0.1.42.apk", "Release notes"), found)
-            assertEquals("/repos/everyonesoftware/audio/releases/latest", server.takeRequest().path)
+            assertEquals("/repos/everyonesoftware/music/releases/latest", server.takeRequest().path)
             val manifestRequest = server.takeRequest()
-            assertEquals("/everyonesoftware/audio/releases/download/v0.1.42/release.json", manifestRequest.path)
+            assertEquals("/everyonesoftware/music/releases/download/v0.1.42/release.json", manifestRequest.path)
             assertNull(manifestRequest.getHeader("Authorization")); assertNull(manifestRequest.getHeader("Cookie"))
         }
     }
@@ -90,7 +90,8 @@ class UpdateClientTest {
         MockWebServer().use { server ->
             val invalid = listOf(
                 metadata().replace(base, "https://evil.invalid/"),
-                metadata().replace(base, base.replace("everyonesoftware/audio", "someone/audio")),
+                metadata().replace(base, base.replace("everyonesoftware/music", "someone/music")),
+                metadata().replace(base, base.replace("everyonesoftware/music", "everyonesoftware/audio")),
                 metadata().replace(base, base.replace("https:", "http:")),
                 metadata().replace("${base}release.json", "${base}release.json?token=secret"),
                 metadata().replace("\"name\":\"release.json\"", "\"name\":\"../release.json\""))
@@ -145,11 +146,11 @@ class UpdateClientTest {
     }
     @Test fun manualRedirectsAreBoundedAndRejectExternalAndInsecureTargets() = runBlocking<Unit> {
         MockWebServer().use { server ->
-            for (location in listOf("https://evil.invalid/secret", "http://github.com/everyonesoftware/audio/releases/download/v0.1.42/release.json", "https://github.com.evil.invalid/x", "https://user:secret@github.com/x")) {
+            for (location in listOf("https://evil.invalid/secret", "http://github.com/everyonesoftware/music/releases/download/v0.1.42/release.json", "https://github.com.evil.invalid/x", "https://user:secret@github.com/x")) {
                 server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", location))
                 failure { client(server).latest(1) }
             }
-            repeat(6) { server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/repos/everyonesoftware/audio/releases/latest")) }
+            repeat(6) { server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/repos/everyonesoftware/music/releases/latest")) }
             failure { client(server).latest(1) }
         }
     }

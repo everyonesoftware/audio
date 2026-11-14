@@ -1,6 +1,6 @@
 # In-app updates
 
-Music checks the public `everyonesoftware/audio` GitHub repository for the latest published stable release. This is separate from Navidrome: no music-server URL, username, password or token enters the updater's HTTP client.
+Music checks the public `everyonesoftware/music` GitHub repository for the latest published stable release. This is separate from Navidrome: no music-server URL, username, password or token enters the updater's HTTP client.
 
 ## Phone flow
 

@@ -19,7 +19,7 @@ import org.junit.rules.TemporaryFolder
 class UpdateCoordinatorTest {
     @get:Rule val folder = TemporaryFolder()
     private val release = UpdateRelease(200, "0.1.200", "Music-0.1.200.apk", 3, "a".repeat(64),
-        "https://github.com/everyonesoftware/audio/releases/download/v0.1.200/Music-0.1.200.apk", "Fixture notes")
+        "https://github.com/everyonesoftware/music/releases/download/v0.1.200/Music-0.1.200.apk", "Fixture notes")
     private class Fixture(val directory: File) {
         var clock = 1_000_000L
         var requests = 0

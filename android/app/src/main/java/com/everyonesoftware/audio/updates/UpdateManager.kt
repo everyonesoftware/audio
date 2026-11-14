@@ -69,7 +69,7 @@ class UpdateManager(context: Context, scope: CoroutineScope, private val client:
             require(release.count in 1..2_100_000_000 && release.version == "0.1.${release.count}")
             require(release.apk == "Music-${release.version}.apk" && release.bytes in 1..157_286_400L)
             require(Regex("[0-9a-f]{64}").matches(release.sha256))
-            require(release.downloadUrl == "https://github.com/everyonesoftware/audio/releases/download/v${release.version}/${release.apk}")
+            require(release.downloadUrl == "https://github.com/everyonesoftware/music/releases/download/v${release.version}/${release.apk}")
             release
         }
     } catch (_: Exception) { null }

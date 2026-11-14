@@ -222,7 +222,7 @@ class UpdateClient private constructor(private val testConfig: UpdateTestConfig?
             check(url.host in ASSET_HOSTS)
             if (url.host == "github.com") {
                 check(url.query == null)
-                check(Regex("/everyonesoftware/audio/releases/download/v0\\.1\\.[1-9][0-9]{0,9}/(?:release\\.json|Music-0\\.1\\.[1-9][0-9]{0,9}\\.apk)").matches(url.encodedPath))
+                check(Regex("/everyonesoftware/music/releases/download/v0\\.1\\.[1-9][0-9]{0,9}/(?:release\\.json|Music-0\\.1\\.[1-9][0-9]{0,9}\\.apk)").matches(url.encodedPath))
             }
         }
     }
@@ -272,7 +272,7 @@ class UpdateClient private constructor(private val testConfig: UpdateTestConfig?
     )
 
     private companion object {
-        const val LATEST = "https://api.github.com/repos/everyonesoftware/audio/releases/latest"
+        const val LATEST = "https://api.github.com/repos/everyonesoftware/music/releases/latest"
         const val MAX_RELEASE_JSON = 1024 * 1024
         const val MAX_MANIFEST_JSON = 64 * 1024
         const val MAX_NOTES = 16000
@@ -280,6 +280,6 @@ class UpdateClient private constructor(private val testConfig: UpdateTestConfig?
         const val MAX_REDIRECTS = 5
         val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
         val ASSET_HOSTS = setOf("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com")
-        fun assetPrefix(count: Int) = "https://github.com/everyonesoftware/audio/releases/download/v0.1.$count/"
+        fun assetPrefix(count: Int) = "https://github.com/everyonesoftware/music/releases/download/v0.1.$count/"
     }
 }

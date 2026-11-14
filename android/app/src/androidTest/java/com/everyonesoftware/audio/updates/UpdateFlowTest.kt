@@ -360,7 +360,7 @@ class UpdateFlowTest {
 
     private val snapshot = PlaybackSnapshot(playing = true, positionMs = 34_567L, durationMs = 180_000L)
     private companion object {
-        const val API_PATH = "/repos/everyonesoftware/audio/releases/latest"
-        const val ASSET_PATH = "/everyonesoftware/audio/releases/download"
+        const val API_PATH = "/repos/everyonesoftware/music/releases/latest"
+        const val ASSET_PATH = "/everyonesoftware/music/releases/download"
     }
 }
